@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { 
   insertApplicationSchema,
   insertLicenseSchema,
@@ -13,19 +14,46 @@ import {
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Applications
-  app.get("/api/applications", async (req, res) => {
+  // Setup authentication
+  await setupAuth(app);
+
+  // Auth route to get current user
+  app.get("/api/auth/user", isAuthenticated, async (req, res) => {
     try {
-      const applications = await storage.getApplications();
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user" });
+    }
+  });
+
+  // Applications
+  app.get("/api/applications", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const applications = await storage.getApplications(user.organizationId);
       res.json(applications);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch applications" });
     }
   });
 
-  app.get("/api/applications/:id", async (req, res) => {
+  app.get("/api/applications/:id", isAuthenticated, async (req, res) => {
     try {
-      const application = await storage.getApplication(req.params.id);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const application = await storage.getApplication(req.params.id, user.organizationId);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
       }
@@ -35,19 +63,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/applications", async (req, res) => {
+  app.post("/api/applications", isAuthenticated, async (req, res) => {
     try {
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
       const validatedData = insertApplicationSchema.parse(req.body);
-      const application = await storage.createApplication(validatedData);
+      const application = await storage.createApplication({
+        ...validatedData,
+        organizationId: user.organizationId
+      });
       res.status(201).json(application);
     } catch (error) {
       res.status(400).json({ error: "Invalid application data" });
     }
   });
 
-  app.patch("/api/applications/:id", async (req, res) => {
+  app.patch("/api/applications/:id", isAuthenticated, async (req, res) => {
     try {
-      const application = await storage.updateApplication(req.params.id, req.body);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const application = await storage.updateApplication(req.params.id, user.organizationId, req.body);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
       }
@@ -57,9 +98,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/applications/:id", async (req, res) => {
+  app.delete("/api/applications/:id", isAuthenticated, async (req, res) => {
     try {
-      const deleted = await storage.deleteApplication(req.params.id);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const deleted = await storage.deleteApplication(req.params.id, user.organizationId);
       if (!deleted) {
         return res.status(404).json({ error: "Application not found" });
       }
@@ -70,18 +116,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Licenses
-  app.get("/api/licenses", async (req, res) => {
+  app.get("/api/licenses", isAuthenticated, async (req, res) => {
     try {
-      const licenses = await storage.getLicenses();
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const licenses = await storage.getLicenses(user.organizationId);
       res.json(licenses);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch licenses" });
     }
   });
 
-  app.get("/api/licenses/application/:applicationId", async (req, res) => {
+  app.get("/api/licenses/application/:applicationId", isAuthenticated, async (req, res) => {
     try {
-      const license = await storage.getLicensesByApplicationId(req.params.applicationId);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const license = await storage.getLicensesByApplicationId(req.params.applicationId, user.organizationId);
       if (!license) {
         return res.status(404).json({ error: "License not found" });
       }
@@ -91,19 +147,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/licenses", async (req, res) => {
+  app.post("/api/licenses", isAuthenticated, async (req, res) => {
     try {
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
       const validatedData = insertLicenseSchema.parse(req.body);
-      const license = await storage.createLicense(validatedData);
+      const license = await storage.createLicense({
+        ...validatedData,
+        organizationId: user.organizationId
+      });
       res.status(201).json(license);
     } catch (error) {
       res.status(400).json({ error: "Invalid license data" });
     }
   });
 
-  app.patch("/api/licenses/:id", async (req, res) => {
+  app.patch("/api/licenses/:id", isAuthenticated, async (req, res) => {
     try {
-      const license = await storage.updateLicense(req.params.id, req.body);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const license = await storage.updateLicense(req.params.id, user.organizationId, req.body);
       if (!license) {
         return res.status(404).json({ error: "License not found" });
       }
@@ -113,9 +182,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/licenses/:id", async (req, res) => {
+  app.delete("/api/licenses/:id", isAuthenticated, async (req, res) => {
     try {
-      const deleted = await storage.deleteLicense(req.params.id);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const deleted = await storage.deleteLicense(req.params.id, user.organizationId);
       if (!deleted) {
         return res.status(404).json({ error: "License not found" });
       }
@@ -126,18 +200,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Renewals
-  app.get("/api/renewals", async (req, res) => {
+  app.get("/api/renewals", isAuthenticated, async (req, res) => {
     try {
-      const renewals = await storage.getRenewals();
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const renewals = await storage.getRenewals(user.organizationId);
       res.json(renewals);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch renewals" });
     }
   });
 
-  app.get("/api/renewals/:id", async (req, res) => {
+  app.get("/api/renewals/:id", isAuthenticated, async (req, res) => {
     try {
-      const renewal = await storage.getRenewal(req.params.id);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const renewal = await storage.getRenewal(req.params.id, user.organizationId);
       if (!renewal) {
         return res.status(404).json({ error: "Renewal not found" });
       }
@@ -147,28 +231,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/renewals/application/:applicationId", async (req, res) => {
+  app.get("/api/renewals/application/:applicationId", isAuthenticated, async (req, res) => {
     try {
-      const renewals = await storage.getRenewalsByApplicationId(req.params.applicationId);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const renewals = await storage.getRenewalsByApplicationId(req.params.applicationId, user.organizationId);
       res.json(renewals);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch renewals" });
     }
   });
 
-  app.post("/api/renewals", async (req, res) => {
+  app.post("/api/renewals", isAuthenticated, async (req, res) => {
     try {
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
       const validatedData = insertRenewalSchema.parse(req.body);
-      const renewal = await storage.createRenewal(validatedData);
+      const renewal = await storage.createRenewal({
+        ...validatedData,
+        organizationId: user.organizationId
+      });
       res.status(201).json(renewal);
     } catch (error) {
       res.status(400).json({ error: "Invalid renewal data" });
     }
   });
 
-  app.patch("/api/renewals/:id", async (req, res) => {
+  app.patch("/api/renewals/:id", isAuthenticated, async (req, res) => {
     try {
-      const renewal = await storage.updateRenewal(req.params.id, req.body);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const renewal = await storage.updateRenewal(req.params.id, user.organizationId, req.body);
       if (!renewal) {
         return res.status(404).json({ error: "Renewal not found" });
       }
@@ -178,9 +280,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/renewals/:id", async (req, res) => {
+  app.delete("/api/renewals/:id", isAuthenticated, async (req, res) => {
     try {
-      const deleted = await storage.deleteRenewal(req.params.id);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const deleted = await storage.deleteRenewal(req.params.id, user.organizationId);
       if (!deleted) {
         return res.status(404).json({ error: "Renewal not found" });
       }
@@ -191,18 +298,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Recommendations
-  app.get("/api/recommendations", async (req, res) => {
+  app.get("/api/recommendations", isAuthenticated, async (req, res) => {
     try {
-      const recommendations = await storage.getRecommendations();
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const recommendations = await storage.getRecommendations(user.organizationId);
       res.json(recommendations);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch recommendations" });
     }
   });
 
-  app.get("/api/recommendations/:id", async (req, res) => {
+  app.get("/api/recommendations/:id", isAuthenticated, async (req, res) => {
     try {
-      const recommendation = await storage.getRecommendation(req.params.id);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const recommendation = await storage.getRecommendation(req.params.id, user.organizationId);
       if (!recommendation) {
         return res.status(404).json({ error: "Recommendation not found" });
       }
@@ -212,19 +329,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/recommendations", async (req, res) => {
+  app.post("/api/recommendations", isAuthenticated, async (req, res) => {
     try {
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
       const validatedData = insertRecommendationSchema.parse(req.body);
-      const recommendation = await storage.createRecommendation(validatedData);
+      const recommendation = await storage.createRecommendation({
+        ...validatedData,
+        organizationId: user.organizationId
+      });
       res.status(201).json(recommendation);
     } catch (error) {
       res.status(400).json({ error: "Invalid recommendation data" });
     }
   });
 
-  app.patch("/api/recommendations/:id", async (req, res) => {
+  app.patch("/api/recommendations/:id", isAuthenticated, async (req, res) => {
     try {
-      const recommendation = await storage.updateRecommendation(req.params.id, req.body);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const recommendation = await storage.updateRecommendation(req.params.id, user.organizationId, req.body);
       if (!recommendation) {
         return res.status(404).json({ error: "Recommendation not found" });
       }
@@ -234,9 +364,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/recommendations/:id", async (req, res) => {
+  app.delete("/api/recommendations/:id", isAuthenticated, async (req, res) => {
     try {
-      const deleted = await storage.deleteRecommendation(req.params.id);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const deleted = await storage.deleteRecommendation(req.params.id, user.organizationId);
       if (!deleted) {
         return res.status(404).json({ error: "Recommendation not found" });
       }
@@ -247,19 +382,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Spending History
-  app.get("/api/spending-history", async (req, res) => {
+  app.get("/api/spending-history", isAuthenticated, async (req, res) => {
     try {
-      const history = await storage.getSpendingHistory();
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const history = await storage.getSpendingHistory(user.organizationId);
       res.json(history);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch spending history" });
     }
   });
 
-  app.post("/api/spending-history", async (req, res) => {
+  app.post("/api/spending-history", isAuthenticated, async (req, res) => {
     try {
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
       const validatedData = insertSpendingHistorySchema.parse(req.body);
-      const history = await storage.createSpendingHistory(validatedData);
+      const history = await storage.createSpendingHistory({
+        ...validatedData,
+        organizationId: user.organizationId
+      });
       res.status(201).json(history);
     } catch (error) {
       res.status(400).json({ error: "Invalid spending history data" });
@@ -267,11 +415,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard statistics endpoint
-  app.get("/api/dashboard/stats", async (req, res) => {
+  app.get("/api/dashboard/stats", isAuthenticated, async (req, res) => {
     try {
-      const applications = await storage.getApplications();
-      const licenses = await storage.getLicenses();
-      const recommendations = await storage.getRecommendations();
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const applications = await storage.getApplications(user.organizationId);
+      const licenses = await storage.getLicenses(user.organizationId);
+      const recommendations = await storage.getRecommendations(user.organizationId);
       
       const totalApplications = applications.length;
       const totalLicenses = licenses.reduce((sum, l) => sum + l.totalLicenses, 0);
@@ -295,21 +448,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Conversations
-  app.get("/api/conversations", async (req, res) => {
+  app.get("/api/conversations", isAuthenticated, async (req, res) => {
     try {
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
       const { type } = req.query;
       const conversations = type 
-        ? await storage.getConversationsByType(type as string)
-        : await storage.getConversations();
+        ? await storage.getConversationsByType(type as string, user.organizationId)
+        : await storage.getConversations(user.organizationId);
       res.json(conversations);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch conversations" });
     }
   });
 
-  app.get("/api/conversations/:id", async (req, res) => {
+  app.get("/api/conversations/:id", isAuthenticated, async (req, res) => {
     try {
-      const conversation = await storage.getConversation(req.params.id);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const conversation = await storage.getConversation(req.params.id, user.organizationId);
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
       }
@@ -319,19 +482,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/conversations", async (req, res) => {
+  app.post("/api/conversations", isAuthenticated, async (req, res) => {
     try {
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
       const validatedData = insertConversationSchema.parse(req.body);
-      const conversation = await storage.createConversation(validatedData);
+      const conversation = await storage.createConversation({
+        ...validatedData,
+        organizationId: user.organizationId
+      });
       res.status(201).json(conversation);
     } catch (error) {
       res.status(400).json({ error: "Invalid conversation data" });
     }
   });
 
-  app.patch("/api/conversations/:id", async (req, res) => {
+  app.patch("/api/conversations/:id", isAuthenticated, async (req, res) => {
     try {
-      const conversation = await storage.updateConversation(req.params.id, req.body);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const conversation = await storage.updateConversation(req.params.id, user.organizationId, req.body);
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
       }
@@ -341,9 +517,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/conversations/:id", async (req, res) => {
+  app.delete("/api/conversations/:id", isAuthenticated, async (req, res) => {
     try {
-      const deleted = await storage.deleteConversation(req.params.id);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const deleted = await storage.deleteConversation(req.params.id, user.organizationId);
       if (!deleted) {
         return res.status(404).json({ error: "Conversation not found" });
       }
@@ -354,22 +535,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Messages
-  app.get("/api/conversations/:conversationId/messages", async (req, res) => {
+  app.get("/api/conversations/:conversationId/messages", isAuthenticated, async (req, res) => {
     try {
-      const messages = await storage.getMessages(req.params.conversationId);
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      const messages = await storage.getMessages(req.params.conversationId, user.organizationId);
       res.json(messages);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch messages" });
     }
   });
 
-  app.post("/api/conversations/:conversationId/messages", async (req, res) => {
+  app.post("/api/conversations/:conversationId/messages", isAuthenticated, async (req, res) => {
     try {
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
       const validatedData = insertMessageSchema.parse({
         ...req.body,
         conversationId: req.params.conversationId
       });
-      const message = await storage.createMessage(validatedData);
+      const message = await storage.createMessage({
+        ...validatedData,
+        organizationId: user.organizationId
+      });
       
       // Broadcast message to all WebSocket clients in this conversation
       const data = JSON.stringify({
@@ -392,7 +586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
   
-  // WebSocket Server for real-time messaging
+  // WebSocket Server for real-time messaging (auth will be added later)
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
   wss.on('connection', (ws) => {
@@ -408,7 +602,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             senderName: payload.senderName,
             senderRole: payload.senderRole,
             content: payload.content,
-            messageType: payload.messageType || 'text'
+            messageType: payload.messageType || 'text',
+            organizationId: payload.organizationId
           });
 
           // Broadcast to all clients

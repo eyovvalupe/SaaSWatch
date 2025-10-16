@@ -143,6 +143,7 @@ export const upsertUserSchema = createInsertSchema(users).pick({
   firstName: true,
   lastName: true,
   profileImageUrl: true,
+  organizationId: true,
 });
 
 export const insertApplicationSchema = createInsertSchema(applications).omit({
