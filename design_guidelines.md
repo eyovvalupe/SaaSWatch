@@ -15,29 +15,28 @@
 
 ## Color Palette
 
-**Dark Mode (Primary):**
-- Background Base: 222 20% 11%
-- Surface Elevated: 222 18% 15%
-- Surface Hover: 222 16% 18%
-- Border Subtle: 222 12% 22%
-- Border Default: 222 10% 28%
-- Text Primary: 222 8% 95%
-- Text Secondary: 222 8% 70%
-- Text Tertiary: 222 8% 50%
+**Primary Theme (Light Mode with Purple Accents):**
+- Background Base: 0 0% 100% (Pure White)
+- Surface Elevated: 0 0% 100% (Pure White)
+- Surface Hover: 270 30% 95% (Very Light Purple)
+- Border Subtle: 270 15% 92%
+- Border Default: 270 20% 90%
+- Text Primary: 270 60% 35% (Rich Purple)
+- Text Secondary: 270 40% 50% (Medium Purple)
+- Text Tertiary: 270 30% 60% (Light Purple)
 
 **Accent Colors:**
-- Primary (Brand): 218 85% 58% - Used for CTAs, active states, primary actions
+- Primary (Brand): 270 70% 55% - Purple for CTAs, active states, primary actions
 - Success (Positive metrics): 142 76% 45% - ROI gains, cost savings, optimizations
 - Warning (Moderate risk): 38 92% 50% - Underutilized licenses, pending renewals
 - Danger (High risk): 0 84% 60% - Shadow IT, over-spending, critical alerts
-- Info (Neutral data): 199 89% 48% - General information, tooltips, secondary data
+- Info (Chart accents): 260 80% 60%, 280 75% 60% - Purple-toned chart colors
 
-**Light Mode:**
-- Background Base: 0 0% 100%
-- Surface Elevated: 220 14% 98%
-- Border Subtle: 220 13% 91%
-- Text Primary: 222 47% 11%
-- (Accent colors remain consistent with adjusted saturation for contrast)
+**Design Philosophy:**
+- Clean white backgrounds throughout for clarity
+- Purple text and accents for brand consistency
+- Subtle purple borders and hover states
+- High contrast purple-on-white for accessibility
 
 ---
 
