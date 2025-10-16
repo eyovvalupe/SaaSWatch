@@ -82,7 +82,7 @@ function AuthWrapper({ style }: { style: any }) {
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <img 
                 src={logoImage} 
-                alt="APPFUZE.AI" 
+                alt="Appfuze.ai" 
                 className="h-7 w-auto object-contain"
                 data-testid="img-header-logo"
               />

@@ -12,7 +12,7 @@ export default function Landing() {
         <div className="flex justify-center">
           <img 
             src={logoImage} 
-            alt="APPFUZE.AI" 
+            alt="Appfuze.ai" 
             className="h-16 w-auto object-contain"
             data-testid="img-landing-logo"
           />
@@ -20,7 +20,7 @@ export default function Landing() {
         
         <div className="space-y-4">
           <h1 className="text-5xl font-bold text-primary">
-            Welcome to APPFUZE.AI
+            Welcome to Appfuze.ai
           </h1>
           <p className="text-xl text-muted-foreground max-w-xl mx-auto">
             Your all-in-one SaaS management platform. Track applications, manage licenses, 

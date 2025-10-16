@@ -62,7 +62,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-3">
           <img 
             src={logoImage} 
-            alt="APPFUZE.AI" 
+            alt="Appfuze.ai" 
             className="h-8 w-auto object-contain"
             data-testid="img-logo"
           />
