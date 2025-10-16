@@ -62,6 +62,28 @@ export const spendingHistory = pgTable("spending_history", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const conversations = pgTable("conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: text("type").notNull(), // internal (team chat) or vendor (CRM)
+  applicationId: varchar("application_id").references(() => applications.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  vendorName: text("vendor_name"), // for vendor conversations
+  status: text("status").notNull().default("active"), // active, archived
+  lastMessageAt: timestamp("last_message_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const messages = pgTable("messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+  senderName: text("sender_name").notNull(), // user name
+  senderRole: text("sender_role").notNull(), // admin, user, vendor
+  content: text("content").notNull(),
+  messageType: text("message_type").notNull().default("text"), // text, action, system
+  metadata: text("metadata"), // JSON string for additional data
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Insert Schemas
 export const insertApplicationSchema = createInsertSchema(applications).omit({
   id: true,
@@ -89,6 +111,16 @@ export const insertSpendingHistorySchema = createInsertSchema(spendingHistory).o
   createdAt: true,
 });
 
+export const insertConversationSchema = createInsertSchema(conversations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMessageSchema = createInsertSchema(messages).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type InsertApplication = z.infer<typeof insertApplicationSchema>;
 export type Application = typeof applications.$inferSelect;
@@ -104,3 +136,9 @@ export type Recommendation = typeof recommendations.$inferSelect;
 
 export type InsertSpendingHistory = z.infer<typeof insertSpendingHistorySchema>;
 export type SpendingHistory = typeof spendingHistory.$inferSelect;
+
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+export type Conversation = typeof conversations.$inferSelect;
+
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type Message = typeof messages.$inferSelect;
