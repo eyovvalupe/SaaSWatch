@@ -203,5 +203,109 @@ export async function seedData() {
     });
   }
 
+  // Create conversations - Internal team chat
+  const slackChat = await storage.createConversation({
+    type: "internal",
+    applicationId: slack.id,
+    title: "Slack Usage Discussion",
+    status: "active"
+  });
+
+  await storage.createMessage({
+    conversationId: slackChat.id,
+    senderName: "Sarah Chen",
+    senderRole: "user",
+    content: "Has anyone noticed the new Slack features in the latest update?",
+    messageType: "text"
+  });
+
+  await storage.createMessage({
+    conversationId: slackChat.id,
+    senderName: "Mike Johnson",
+    senderRole: "user",
+    content: "Yes! The new workflow automation is really helpful for our team.",
+    messageType: "text"
+  });
+
+  const githubChat = await storage.createConversation({
+    type: "internal",
+    applicationId: github.id,
+    title: "GitHub License Optimization",
+    status: "active"
+  });
+
+  await storage.createMessage({
+    conversationId: githubChat.id,
+    senderName: "Alex Torres",
+    senderRole: "admin",
+    content: "Team, we have 5 inactive licenses on GitHub. Let's review who needs access.",
+    messageType: "text"
+  });
+
+  await storage.createMessage({
+    conversationId: githubChat.id,
+    senderName: "Emma Davis",
+    senderRole: "user",
+    content: "I can help audit the team members. Some folks from the old project might not need access anymore.",
+    messageType: "text"
+  });
+
+  // Create conversations - Vendor CRM
+  const salesforceCRM = await storage.createConversation({
+    type: "vendor",
+    applicationId: salesforce.id,
+    title: "Salesforce License Negotiation",
+    vendorName: "Salesforce Account Team",
+    status: "active"
+  });
+
+  await storage.createMessage({
+    conversationId: salesforceCRM.id,
+    senderName: "Admin",
+    senderRole: "admin",
+    content: "Hi team, we're looking to optimize our Salesforce licenses. We currently have 30 licenses but only 28 active users. Can we discuss reducing our plan?",
+    messageType: "text"
+  });
+
+  await storage.createMessage({
+    conversationId: salesforceCRM.id,
+    senderName: "Jennifer Smith - Salesforce",
+    senderRole: "vendor",
+    content: "Thank you for reaching out! I'd be happy to review your usage. Let me pull up your account details and we can discuss options for right-sizing your subscription.",
+    messageType: "text"
+  });
+
+  await storage.createMessage({
+    conversationId: salesforceCRM.id,
+    senderName: "Admin",
+    senderRole: "admin",
+    content: "That would be great. We're also approaching our renewal date and want to make sure we're getting the best value.",
+    messageType: "text"
+  });
+
+  const zoomCRM = await storage.createConversation({
+    type: "vendor",
+    applicationId: zoom.id,
+    title: "Zoom Plan Downgrade Discussion",
+    vendorName: "Zoom Sales Team",
+    status: "active"
+  });
+
+  await storage.createMessage({
+    conversationId: zoomCRM.id,
+    senderName: "Admin",
+    senderRole: "admin",
+    content: "Hello, our team is considering downgrading from our current Zoom plan. We have 25 licenses but only 15 active users. What options do we have?",
+    messageType: "text"
+  });
+
+  await storage.createMessage({
+    conversationId: zoomCRM.id,
+    senderName: "David Park - Zoom",
+    senderRole: "vendor",
+    content: "Hi there! I can definitely help you find a better fit. Based on your usage, we have a Business plan that would work well for 15-20 users. This could save you approximately $120/month.",
+    messageType: "text"
+  });
+
   console.log("Data seeded successfully!");
 }
