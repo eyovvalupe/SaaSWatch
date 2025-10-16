@@ -1,12 +1,15 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { 
   insertApplicationSchema,
   insertLicenseSchema,
   insertRenewalSchema,
   insertRecommendationSchema,
-  insertSpendingHistorySchema
+  insertSpendingHistorySchema,
+  insertConversationSchema,
+  insertMessageSchema
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -291,6 +294,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Conversations
+  app.get("/api/conversations", async (req, res) => {
+    try {
+      const { type } = req.query;
+      const conversations = type 
+        ? await storage.getConversationsByType(type as string)
+        : await storage.getConversations();
+      res.json(conversations);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+
+  app.get("/api/conversations/:id", async (req, res) => {
+    try {
+      const conversation = await storage.getConversation(req.params.id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      res.json(conversation);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch conversation" });
+    }
+  });
+
+  app.post("/api/conversations", async (req, res) => {
+    try {
+      const validatedData = insertConversationSchema.parse(req.body);
+      const conversation = await storage.createConversation(validatedData);
+      res.status(201).json(conversation);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid conversation data" });
+    }
+  });
+
+  app.patch("/api/conversations/:id", async (req, res) => {
+    try {
+      const conversation = await storage.updateConversation(req.params.id, req.body);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      res.json(conversation);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update conversation" });
+    }
+  });
+
+  app.delete("/api/conversations/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteConversation(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete conversation" });
+    }
+  });
+
+  // Messages
+  app.get("/api/conversations/:conversationId/messages", async (req, res) => {
+    try {
+      const messages = await storage.getMessages(req.params.conversationId);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  app.post("/api/conversations/:conversationId/messages", async (req, res) => {
+    try {
+      const validatedData = insertMessageSchema.parse({
+        ...req.body,
+        conversationId: req.params.conversationId
+      });
+      const message = await storage.createMessage(validatedData);
+      
+      // Broadcast message to all WebSocket clients in this conversation
+      const data = JSON.stringify({
+        type: 'new_message',
+        conversationId: req.params.conversationId,
+        message
+      });
+      
+      wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(data);
+        }
+      });
+      
+      res.status(201).json(message);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid message data" });
+    }
+  });
+
   const httpServer = createServer(app);
+  
+  // WebSocket Server for real-time messaging
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+
+  wss.on('connection', (ws) => {
+    console.log('WebSocket client connected');
+
+    ws.on('message', async (data) => {
+      try {
+        const payload = JSON.parse(data.toString());
+        
+        if (payload.type === 'send_message') {
+          const message = await storage.createMessage({
+            conversationId: payload.conversationId,
+            senderName: payload.senderName,
+            senderRole: payload.senderRole,
+            content: payload.content,
+            messageType: payload.messageType || 'text'
+          });
+
+          // Broadcast to all clients
+          const broadcastData = JSON.stringify({
+            type: 'new_message',
+            conversationId: payload.conversationId,
+            message
+          });
+
+          wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(broadcastData);
+            }
+          });
+        }
+      } catch (error) {
+        console.error('WebSocket error:', error);
+      }
+    });
+
+    ws.on('close', () => {
+      console.log('WebSocket client disconnected');
+    });
+  });
+
   return httpServer;
 }
