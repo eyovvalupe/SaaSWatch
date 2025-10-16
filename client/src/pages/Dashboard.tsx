@@ -7,41 +7,92 @@ import { Package, DollarSign, CreditCard, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Plus } from "lucide-react";
-
-// TODO: Remove mock data when connecting to backend
-import slackLogo from '@assets/generated_images/Slack_app_icon_a668dc5a.png';
-import salesforceLogo from '@assets/generated_images/Salesforce_app_icon_0d18cc45.png';
-import zoomLogo from '@assets/generated_images/Zoom_app_icon_3be960fb.png';
-import githubLogo from '@assets/generated_images/GitHub_app_icon_40d531dd.png';
-import figmaLogo from '@assets/generated_images/Figma_app_icon_91c3879c.png';
-import notionLogo from '@assets/generated_images/Notion_app_icon_9574a133.png';
-
-const mockSpendingData = [
-  { month: 'Jan', spend: 7200 },
-  { month: 'Feb', spend: 7500 },
-  { month: 'Mar', spend: 7800 },
-  { month: 'Apr', spend: 8100 },
-  { month: 'May', spend: 8000 },
-  { month: 'Jun', spend: 8420 },
-];
-
-const mockApplications = [
-  { id: 'slack', name: 'Slack', category: 'Communication', monthlyCost: 800, status: 'approved' as const, logo: slackLogo },
-  { id: 'salesforce', name: 'Salesforce', category: 'CRM', monthlyCost: 1500, status: 'approved' as const, logo: salesforceLogo },
-  { id: 'zoom', name: 'Zoom', category: 'Video Conferencing', monthlyCost: 300, status: 'trial' as const, logo: zoomLogo },
-  { id: 'github', name: 'GitHub', category: 'Development', monthlyCost: 840, status: 'approved' as const, logo: githubLogo },
-  { id: 'figma', name: 'Figma', category: 'Design', monthlyCost: 300, status: 'approved' as const, logo: figmaLogo },
-  { id: 'notion', name: 'Notion', category: 'Productivity', monthlyCost: 80, status: 'shadow' as const, logo: notionLogo },
-];
-
-const mockRenewals = [
-  { id: '1', appName: 'Salesforce', renewalDate: 'Dec 15, 2024', annualCost: 18000, daysUntilRenewal: 25 },
-  { id: '2', appName: 'GitHub', renewalDate: 'Jan 20, 2025', annualCost: 10080, daysUntilRenewal: 45 },
-  { id: '3', appName: 'Slack', renewalDate: 'Feb 10, 2025', annualCost: 9600, daysUntilRenewal: 66 },
-  { id: '4', appName: 'Zoom', renewalDate: 'Mar 5, 2025', annualCost: 3600, daysUntilRenewal: 90 },
-];
+import { useQuery } from "@tanstack/react-query";
+import type { Application, License, Renewal, Recommendation, SpendingHistory } from "@shared/schema";
 
 export default function Dashboard() {
+  const { data: applications = [], isLoading: appsLoading } = useQuery<Application[]>({
+    queryKey: ['/api/applications'],
+  });
+
+  const { data: licenses = [] } = useQuery<License[]>({
+    queryKey: ['/api/licenses'],
+  });
+
+  const { data: renewals = [] } = useQuery<Renewal[]>({
+    queryKey: ['/api/renewals'],
+  });
+
+  const { data: recommendations = [] } = useQuery<Recommendation[]>({
+    queryKey: ['/api/recommendations'],
+  });
+
+  const { data: spendingHistory = [] } = useQuery<SpendingHistory[]>({
+    queryKey: ['/api/spending-history'],
+  });
+
+  const { data: stats } = useQuery<{
+    totalApplications: number;
+    totalLicenses: number;
+    totalActiveLicenses: number;
+    monthlySpend: number;
+    potentialSavings: number;
+  }>({
+    queryKey: ['/api/dashboard/stats'],
+  });
+
+  // Transform spending history for chart
+  const spendingData = spendingHistory.map(item => ({
+    month: item.month,
+    spend: Number(item.totalSpend)
+  }));
+
+  // Transform renewals for calendar
+  const renewalData = renewals.map(renewal => {
+    const app = applications.find(a => a.id === renewal.applicationId);
+    const renewalDate = new Date(renewal.renewalDate);
+    const today = new Date();
+    const daysUntilRenewal = Math.ceil((renewalDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    return {
+      id: renewal.id,
+      appName: app?.name || 'Unknown',
+      renewalDate: renewalDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      annualCost: Number(renewal.annualCost),
+      daysUntilRenewal
+    };
+  });
+
+  // Transform recommendations for action cards
+  const actionRecommendations = recommendations.map(rec => {
+    const app = applications.find(a => a.id === rec.applicationId);
+    return {
+      id: rec.id,
+      type: rec.type as any,
+      appName: app?.name || 'Unknown',
+      title: rec.title,
+      description: rec.description,
+      priority: rec.priority as any,
+      actionLabel: rec.actionLabel,
+      metadata: {
+        currentCost: rec.currentCost ? Number(rec.currentCost) : undefined,
+        potentialCost: rec.potentialCost ? Number(rec.potentialCost) : undefined,
+        renewalDate: rec.renewalDate || undefined,
+        currentUsers: rec.currentUsers || undefined,
+        activeUsers: rec.activeUsers || undefined,
+        contractValue: rec.contractValue ? Number(rec.contractValue) : undefined,
+      }
+    };
+  });
+
+  if (appsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -60,104 +111,51 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Total Applications"
-          value={24}
+          value={stats?.totalApplications || 0}
           trend={{ value: 12, isPositive: true }}
           icon={Package}
         />
         <MetricCard
           title="Monthly Spend"
-          value="$8,420"
+          value={`$${stats?.monthlySpend.toLocaleString() || 0}`}
           trend={{ value: 8, isPositive: false }}
           icon={DollarSign}
         />
         <MetricCard
           title="Active Licenses"
-          value={156}
+          value={stats?.totalActiveLicenses || 0}
           trend={{ value: 5, isPositive: true }}
           icon={CreditCard}
         />
         <MetricCard
           title="Potential Savings"
-          value="$1,240"
+          value={`$${stats?.potentialSavings.toLocaleString() || 0}`}
           icon={TrendingUp}
           iconColor="text-chart-2"
         />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <SpendingChart data={mockSpendingData} />
-        <RenewalCalendar renewals={mockRenewals} />
+        <SpendingChart data={spendingData} />
+        <RenewalCalendar renewals={renewalData} />
       </div>
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Recommended Actions</h2>
+      {actionRecommendations.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Recommended Actions</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {actionRecommendations.map((rec) => (
+              <ActionRecommendation
+                key={rec.id}
+                {...rec}
+                onAction={() => console.log(`Action: ${rec.title}`)}
+              />
+            ))}
+          </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <ActionRecommendation
-            id="downgrade-zoom"
-            type="downgrade"
-            appName="Zoom"
-            title="Downgrade to lower tier"
-            description="Current usage patterns suggest a lower tier plan would suffice. Save money without losing essential features."
-            priority="medium"
-            actionLabel="Review Downgrade"
-            metadata={{
-              currentCost: 300,
-              potentialCost: 180,
-              currentUsers: 25,
-              activeUsers: 15
-            }}
-            onAction={() => console.log('Review downgrade')}
-          />
-          
-          <ActionRecommendation
-            id="renew-salesforce"
-            type="renew"
-            appName="Salesforce"
-            title="Contract renewal approaching"
-            description="Annual contract expires in 30 days. Review terms and negotiate better rates before auto-renewal."
-            priority="high"
-            actionLabel="Review Renewal"
-            metadata={{
-              renewalDate: "Dec 15, 2024",
-              contractValue: 18000
-            }}
-            onAction={() => console.log('Review renewal')}
-          />
-          
-          <ActionRecommendation
-            id="track-slack"
-            type="track-users"
-            appName="Slack"
-            title="Monitor user activity"
-            description="10 users inactive for 30+ days. Track usage patterns to optimize license allocation."
-            priority="low"
-            actionLabel="View Users"
-            metadata={{
-              currentUsers: 50,
-              activeUsers: 40
-            }}
-            onAction={() => console.log('Track users')}
-          />
-          
-          <ActionRecommendation
-            id="cost-figma"
-            type="cost-review"
-            appName="Figma"
-            title="Cost per signed agreement review"
-            description="Actual spend deviates from signed agreement. Review contract terms and billing."
-            priority="high"
-            actionLabel="Review Cost"
-            metadata={{
-              currentCost: 450,
-              potentialCost: 300,
-              contractValue: 3600
-            }}
-            onAction={() => console.log('Review cost')}
-          />
-        </div>
-      </div>
+      )}
 
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -173,10 +171,15 @@ export default function Dashboard() {
         </div>
         
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {mockApplications.map((app) => (
+          {applications.map((app) => (
             <ApplicationCard
               key={app.id}
-              {...app}
+              id={app.id}
+              name={app.name}
+              category={app.category}
+              monthlyCost={Number(app.monthlyCost)}
+              status={app.status as any}
+              logo={app.logoUrl || ''}
               onClick={() => console.log(`${app.name} clicked`)}
             />
           ))}
