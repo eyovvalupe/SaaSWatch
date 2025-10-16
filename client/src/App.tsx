@@ -11,6 +11,7 @@ import Dashboard from "@/pages/Dashboard";
 import TeamChat from "@/pages/TeamChat";
 import VendorCRM from "@/pages/VendorCRM";
 import NotFound from "@/pages/not-found";
+import logoImage from "@assets/generated_images/APPFUZE.AI_company_logo_00f9e95d.png";
 
 function Router() {
   return (
@@ -42,7 +43,15 @@ function App() {
               <AppSidebar />
               <div className="flex flex-col flex-1 overflow-hidden">
                 <header className="flex items-center justify-between gap-4 p-4 border-b">
-                  <SidebarTrigger data-testid="button-sidebar-toggle" />
+                  <div className="flex items-center gap-4">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <img 
+                      src={logoImage} 
+                      alt="APPFUZE.AI" 
+                      className="h-7 w-auto object-contain"
+                      data-testid="img-header-logo"
+                    />
+                  </div>
                   <ThemeToggle />
                 </header>
                 <main className="flex-1 overflow-auto p-6">

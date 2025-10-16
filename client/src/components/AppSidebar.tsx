@@ -13,6 +13,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import logoImage from "@assets/generated_images/APPFUZE.AI_company_logo_00f9e95d.png";
 
 const menuItems = [
   {
@@ -58,14 +59,13 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-            <Package className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold">SaaS Manager</span>
-            <span className="text-xs text-muted-foreground">Control Center</span>
-          </div>
+        <div className="flex items-center gap-3">
+          <img 
+            src={logoImage} 
+            alt="APPFUZE.AI" 
+            className="h-8 w-auto object-contain"
+            data-testid="img-logo"
+          />
         </div>
       </SidebarHeader>
       <SidebarContent>

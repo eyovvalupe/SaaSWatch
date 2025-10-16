@@ -19,6 +19,12 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### October 16, 2025 - Company Branding
+- Added APPFUZE.AI company logo to the platform
+  - Logo displays in sidebar header and main application header
+  - Professional, modern design suitable for both dark and light modes
+  - Generated using AI image generation with tech/SaaS aesthetic
+
 ### October 16, 2025 - Real-Time Collaboration & Vendor CRM
 - Added Team Chat feature for internal collaboration between license holders
   - Real-time messaging using WebSocket (ws:// protocol on /ws path)
