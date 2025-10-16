@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/pages/Dashboard";
 import TeamChat from "@/pages/TeamChat";
 import VendorCRM from "@/pages/VendorCRM";
+import ROIPage from "@/pages/ROIPage";
 import Landing from "@/pages/Landing";
 import NotFound from "@/pages/not-found";
 import logoImage from "@assets/generated_images/APPFUZE.AI_company_logo_00f9e95d.png";
@@ -35,6 +36,7 @@ function Router() {
       <Route path="/applications" component={Dashboard} />
       <Route path="/licenses" component={Dashboard} />
       <Route path="/analytics" component={Dashboard} />
+      <Route path="/roi" component={ROIPage} />
       <Route path="/team-chat" component={TeamChat} />
       <Route path="/vendor-crm" component={VendorCRM} />
       <Route path="/settings" component={Dashboard} />
