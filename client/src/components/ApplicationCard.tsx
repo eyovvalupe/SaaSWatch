@@ -42,7 +42,7 @@ export function ApplicationCard({ id, name, category, monthlyCost, status, logo,
                 <h3 className="font-semibold text-sm truncate" data-testid={`text-app-name-${id}`}>
                   {name}
                 </h3>
-                <p className="text-xs text-muted-foreground truncate">{category}</p>
+                <p className="text-xs text-muted-foreground truncate" data-testid={`text-app-category-${id}`}>{category}</p>
               </div>
               <Button 
                 variant="ghost" 
