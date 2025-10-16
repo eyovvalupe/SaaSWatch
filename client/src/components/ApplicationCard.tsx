@@ -2,6 +2,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SiSlack, SiSalesforce, SiZoom, SiGithub, SiFigma, SiNotion } from "react-icons/si";
+import { Package } from "lucide-react";
 
 interface ApplicationCardProps {
   id: string;
@@ -19,8 +21,18 @@ const statusConfig = {
   trial: { label: "Trial", className: "bg-chart-3/20 text-chart-3 border-chart-3/30" },
 };
 
+const logoMap: Record<string, any> = {
+  "Slack": SiSlack,
+  "Salesforce": SiSalesforce,
+  "Zoom": SiZoom,
+  "GitHub": SiGithub,
+  "Figma": SiFigma,
+  "Notion": SiNotion,
+};
+
 export function ApplicationCard({ id, name, category, monthlyCost, status, logo, onClick }: ApplicationCardProps) {
   const statusInfo = statusConfig[status];
+  const LogoIcon = logoMap[name] || Package;
   
   return (
     <Card 
@@ -30,12 +42,12 @@ export function ApplicationCard({ id, name, category, monthlyCost, status, logo,
     >
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
-          <img 
-            src={logo} 
-            alt={`${name} logo`}
-            className="h-12 w-12 rounded-md object-cover"
+          <div 
+            className="h-12 w-12 rounded-md bg-primary/10 flex items-center justify-center"
             data-testid={`img-app-logo-${id}`}
-          />
+          >
+            <LogoIcon className="h-7 w-7 text-primary" />
+          </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
