@@ -10,12 +10,29 @@ This is a **SaaS Management Platform** designed to help organizations track, man
 - Renewal tracking with automatic notifications
 - Spending analytics and trend visualization
 - AI-driven cost optimization recommendations
+- Real-time team chat for internal collaboration between license holders
+- Vendor CRM for admin-vendor communications and negotiations
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
+
+### October 16, 2025 - Real-Time Collaboration & Vendor CRM
+- Added Team Chat feature for internal collaboration between license holders
+  - Real-time messaging using WebSocket (ws:// protocol on /ws path)
+  - Conversation-based chat linked to specific applications
+  - Message persistence with in-memory storage
+  - Live message updates without page refresh
+- Implemented Vendor CRM for admin-vendor communications
+  - Dedicated interface for licensing negotiations and cost discussions
+  - Role-based messaging (admin/vendor with visual badges)
+  - Conversation history with timestamps and sender identification
+- Extended schema with Conversations and Messages entities
+- Added WebSocket server integration alongside Express API
+- Seeded sample conversations for both Team Chat and Vendor CRM
+- Comprehensive e2e testing confirms real-time functionality
 
 ### October 16, 2025 - Full-Stack Integration Complete
 - Implemented complete REST API with all CRUD endpoints for applications, licenses, renewals, recommendations, and spending history
@@ -63,8 +80,14 @@ Preferred communication style: Simple, everyday language.
 **Current Storage:** In-memory storage (MemStorage class) - ACTIVE
 - Implements IStorage interface for easy database migration
 - UUID-based entity identifiers
-- Support for: Applications, Licenses, Renewals, Recommendations, Spending History
+- Support for: Applications, Licenses, Renewals, Recommendations, Spending History, Conversations, Messages
 - Auto-seeded with sample data on server startup
+
+**Real-Time Communication:** WebSocket Server
+- Protocol: ws:// on /ws path (separate from Vite HMR WebSocket)
+- Purpose: Real-time message delivery for Team Chat and Vendor CRM
+- Broadcasting: Messages sent to all connected clients for live updates
+- Integration: Works alongside Express REST API
 
 **Planned Database:** PostgreSQL with Drizzle ORM
 - Configuration exists in `drizzle.config.ts` for future migration
@@ -99,11 +122,23 @@ Preferred communication style: Simple, everyday language.
    - Monthly aggregation for trend analysis
    - Supports chart visualization
 
+6. **Conversations** - Communication threads for collaboration and CRM
+   - Types: internal (team chat), vendor (CRM)
+   - Linked to specific applications
+   - Supports both team collaboration and vendor negotiations
+
+7. **Messages** - Individual messages within conversations
+   - Sender identification (name and role)
+   - Message types: text, system
+   - Timestamps for chronological ordering
+   - Real-time delivery via WebSocket
+
 **Design Rationale:**
 - Normalized schema prevents data duplication
 - Decimal types for financial accuracy (avoiding floating-point issues)
 - Timestamps for audit trails and historical analysis
 - Cascade deletes maintain referential integrity
+- Conversation types enable dual-purpose messaging (internal + external)
 
 ### External Dependencies
 
@@ -126,6 +161,12 @@ Preferred communication style: Simple, everyday language.
 **Data Visualization:**
 - **Recharts** - Chart library for spending trends
   - Rationale: React-native components, composable API, responsive by default
+
+**Real-Time Communication:**
+- **WebSocket (ws)** - Native browser WebSocket API for real-time messaging
+  - Server: Node.js `ws` library integrated with Express server
+  - Client: Browser WebSocket API for bidirectional communication
+  - Use case: Live message delivery in Team Chat and Vendor CRM
 
 **Utilities:**
 - **date-fns** - Date manipulation and formatting (chosen over Moment.js for tree-shaking)
