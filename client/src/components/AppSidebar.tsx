@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, CreditCard, BarChart3, Settings, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Package, CreditCard, BarChart3, Settings, ChevronRight, MessageSquare, Building2 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -34,6 +34,16 @@ const menuItems = [
     title: "Analytics",
     url: "/analytics",
     icon: BarChart3,
+  },
+  {
+    title: "Team Chat",
+    url: "/team-chat",
+    icon: MessageSquare,
+  },
+  {
+    title: "Vendor CRM",
+    url: "/vendor-crm",
+    icon: Building2,
   },
   {
     title: "Settings",

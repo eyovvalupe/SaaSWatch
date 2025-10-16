@@ -8,6 +8,8 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import Dashboard from "@/pages/Dashboard";
+import TeamChat from "@/pages/TeamChat";
+import VendorCRM from "@/pages/VendorCRM";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -17,6 +19,8 @@ function Router() {
       <Route path="/applications" component={Dashboard} />
       <Route path="/licenses" component={Dashboard} />
       <Route path="/analytics" component={Dashboard} />
+      <Route path="/team-chat" component={TeamChat} />
+      <Route path="/vendor-crm" component={VendorCRM} />
       <Route path="/settings" component={Dashboard} />
       <Route component={NotFound} />
     </Switch>
