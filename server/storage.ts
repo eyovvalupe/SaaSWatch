@@ -8,7 +8,11 @@ import {
   type Recommendation,
   type InsertRecommendation,
   type SpendingHistory,
-  type InsertSpendingHistory
+  type InsertSpendingHistory,
+  type Conversation,
+  type InsertConversation,
+  type Message,
+  type InsertMessage
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -45,6 +49,19 @@ export interface IStorage {
   // Spending History
   getSpendingHistory(): Promise<SpendingHistory[]>;
   createSpendingHistory(history: InsertSpendingHistory): Promise<SpendingHistory>;
+
+  // Conversations
+  getConversations(): Promise<Conversation[]>;
+  getConversation(id: string): Promise<Conversation | undefined>;
+  getConversationsByType(type: string): Promise<Conversation[]>;
+  getConversationsByApplicationId(applicationId: string): Promise<Conversation[]>;
+  createConversation(conv: InsertConversation): Promise<Conversation>;
+  updateConversation(id: string, conv: Partial<InsertConversation>): Promise<Conversation | undefined>;
+  deleteConversation(id: string): Promise<boolean>;
+
+  // Messages
+  getMessages(conversationId: string): Promise<Message[]>;
+  createMessage(message: InsertMessage): Promise<Message>;
 }
 
 export class MemStorage implements IStorage {
@@ -53,6 +70,8 @@ export class MemStorage implements IStorage {
   private renewals: Map<string, Renewal>;
   private recommendations: Map<string, Recommendation>;
   private spendingHistory: Map<string, SpendingHistory>;
+  private conversations: Map<string, Conversation>;
+  private messages: Map<string, Message>;
 
   constructor() {
     this.applications = new Map();
@@ -60,6 +79,8 @@ export class MemStorage implements IStorage {
     this.renewals = new Map();
     this.recommendations = new Map();
     this.spendingHistory = new Map();
+    this.conversations = new Map();
+    this.messages = new Map();
   }
 
   // Applications
@@ -233,6 +254,90 @@ export class MemStorage implements IStorage {
     };
     this.spendingHistory.set(id, history);
     return history;
+  }
+
+  // Conversations
+  async getConversations(): Promise<Conversation[]> {
+    return Array.from(this.conversations.values()).sort((a, b) => {
+      const aTime = a.lastMessageAt || a.createdAt;
+      const bTime = b.lastMessageAt || b.createdAt;
+      return bTime.getTime() - aTime.getTime();
+    });
+  }
+
+  async getConversation(id: string): Promise<Conversation | undefined> {
+    return this.conversations.get(id);
+  }
+
+  async getConversationsByType(type: string): Promise<Conversation[]> {
+    return Array.from(this.conversations.values())
+      .filter(c => c.type === type && c.status === 'active')
+      .sort((a, b) => {
+        const aTime = a.lastMessageAt || a.createdAt;
+        const bTime = b.lastMessageAt || b.createdAt;
+        return bTime.getTime() - aTime.getTime();
+      });
+  }
+
+  async getConversationsByApplicationId(applicationId: string): Promise<Conversation[]> {
+    return Array.from(this.conversations.values())
+      .filter(c => c.applicationId === applicationId && c.status === 'active');
+  }
+
+  async createConversation(insertConv: InsertConversation): Promise<Conversation> {
+    const id = randomUUID();
+    const conversation: Conversation = { 
+      ...insertConv,
+      applicationId: insertConv.applicationId ?? null,
+      vendorName: insertConv.vendorName ?? null,
+      status: insertConv.status ?? 'active',
+      lastMessageAt: insertConv.lastMessageAt ?? null,
+      id,
+      createdAt: new Date()
+    };
+    this.conversations.set(id, conversation);
+    return conversation;
+  }
+
+  async updateConversation(id: string, updates: Partial<InsertConversation>): Promise<Conversation | undefined> {
+    const conversation = this.conversations.get(id);
+    if (!conversation) return undefined;
+    
+    const updated = { ...conversation, ...updates };
+    this.conversations.set(id, updated);
+    return updated;
+  }
+
+  async deleteConversation(id: string): Promise<boolean> {
+    return this.conversations.delete(id);
+  }
+
+  // Messages
+  async getMessages(conversationId: string): Promise<Message[]> {
+    return Array.from(this.messages.values())
+      .filter(m => m.conversationId === conversationId)
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  }
+
+  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+    const id = randomUUID();
+    const message: Message = { 
+      ...insertMessage,
+      messageType: insertMessage.messageType ?? 'text',
+      metadata: insertMessage.metadata ?? null,
+      id,
+      createdAt: new Date()
+    };
+    this.messages.set(id, message);
+    
+    // Update conversation lastMessageAt
+    const conversation = this.conversations.get(insertMessage.conversationId);
+    if (conversation) {
+      conversation.lastMessageAt = message.createdAt;
+      this.conversations.set(conversation.id, conversation);
+    }
+    
+    return message;
   }
 }
 
