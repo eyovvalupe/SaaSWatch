@@ -12,58 +12,416 @@ import {
   type Conversation,
   type InsertConversation,
   type Message,
-  type InsertMessage
+  type InsertMessage,
+  type User,
+  type UpsertUser,
+  type Organization,
+  type InsertOrganization,
+  applications,
+  licenses,
+  renewals,
+  recommendations,
+  spendingHistory,
+  conversations,
+  messages,
+  users,
+  organizations,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq, and, desc, asc } from "drizzle-orm";
 
 export interface IStorage {
-  // Applications
-  getApplications(): Promise<Application[]>;
-  getApplication(id: string): Promise<Application | undefined>;
+  // User operations (required for Replit Auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  
+  // Organization operations
+  getOrganization(id: string): Promise<Organization | undefined>;
+  createOrganization(org: InsertOrganization): Promise<Organization>;
+  
+  // Applications (with organizationId filtering)
+  getApplications(organizationId: string): Promise<Application[]>;
+  getApplication(id: string, organizationId: string): Promise<Application | undefined>;
   createApplication(app: InsertApplication): Promise<Application>;
-  updateApplication(id: string, app: Partial<InsertApplication>): Promise<Application | undefined>;
-  deleteApplication(id: string): Promise<boolean>;
+  updateApplication(id: string, organizationId: string, app: Partial<InsertApplication>): Promise<Application | undefined>;
+  deleteApplication(id: string, organizationId: string): Promise<boolean>;
 
-  // Licenses
-  getLicenses(): Promise<License[]>;
-  getLicensesByApplicationId(applicationId: string): Promise<License | undefined>;
+  // Licenses (with organizationId filtering)
+  getLicenses(organizationId: string): Promise<License[]>;
+  getLicensesByApplicationId(applicationId: string, organizationId: string): Promise<License | undefined>;
   createLicense(license: InsertLicense): Promise<License>;
-  updateLicense(id: string, license: Partial<InsertLicense>): Promise<License | undefined>;
-  deleteLicense(id: string): Promise<boolean>;
+  updateLicense(id: string, organizationId: string, license: Partial<InsertLicense>): Promise<License | undefined>;
+  deleteLicense(id: string, organizationId: string): Promise<boolean>;
 
-  // Renewals
-  getRenewals(): Promise<Renewal[]>;
-  getRenewal(id: string): Promise<Renewal | undefined>;
-  getRenewalsByApplicationId(applicationId: string): Promise<Renewal[]>;
+  // Renewals (with organizationId filtering)
+  getRenewals(organizationId: string): Promise<Renewal[]>;
+  getRenewal(id: string, organizationId: string): Promise<Renewal | undefined>;
+  getRenewalsByApplicationId(applicationId: string, organizationId: string): Promise<Renewal[]>;
   createRenewal(renewal: InsertRenewal): Promise<Renewal>;
-  updateRenewal(id: string, renewal: Partial<InsertRenewal>): Promise<Renewal | undefined>;
-  deleteRenewal(id: string): Promise<boolean>;
+  updateRenewal(id: string, organizationId: string, renewal: Partial<InsertRenewal>): Promise<Renewal | undefined>;
+  deleteRenewal(id: string, organizationId: string): Promise<boolean>;
 
-  // Recommendations
-  getRecommendations(): Promise<Recommendation[]>;
-  getRecommendation(id: string): Promise<Recommendation | undefined>;
+  // Recommendations (with organizationId filtering)
+  getRecommendations(organizationId: string): Promise<Recommendation[]>;
+  getRecommendation(id: string, organizationId: string): Promise<Recommendation | undefined>;
   createRecommendation(rec: InsertRecommendation): Promise<Recommendation>;
-  updateRecommendation(id: string, rec: Partial<InsertRecommendation>): Promise<Recommendation | undefined>;
-  deleteRecommendation(id: string): Promise<boolean>;
+  updateRecommendation(id: string, organizationId: string, rec: Partial<InsertRecommendation>): Promise<Recommendation | undefined>;
+  deleteRecommendation(id: string, organizationId: string): Promise<boolean>;
 
-  // Spending History
-  getSpendingHistory(): Promise<SpendingHistory[]>;
+  // Spending History (with organizationId filtering)
+  getSpendingHistory(organizationId: string): Promise<SpendingHistory[]>;
   createSpendingHistory(history: InsertSpendingHistory): Promise<SpendingHistory>;
 
-  // Conversations
-  getConversations(): Promise<Conversation[]>;
-  getConversation(id: string): Promise<Conversation | undefined>;
-  getConversationsByType(type: string): Promise<Conversation[]>;
-  getConversationsByApplicationId(applicationId: string): Promise<Conversation[]>;
+  // Conversations (with organizationId filtering)
+  getConversations(organizationId: string): Promise<Conversation[]>;
+  getConversation(id: string, organizationId: string): Promise<Conversation | undefined>;
+  getConversationsByType(type: string, organizationId: string): Promise<Conversation[]>;
+  getConversationsByApplicationId(applicationId: string, organizationId: string): Promise<Conversation[]>;
   createConversation(conv: InsertConversation): Promise<Conversation>;
-  updateConversation(id: string, conv: Partial<InsertConversation>): Promise<Conversation | undefined>;
-  deleteConversation(id: string): Promise<boolean>;
+  updateConversation(id: string, organizationId: string, conv: Partial<InsertConversation>): Promise<Conversation | undefined>;
+  deleteConversation(id: string, organizationId: string): Promise<boolean>;
 
-  // Messages
-  getMessages(conversationId: string): Promise<Message[]>;
+  // Messages (with organizationId filtering)
+  getMessages(conversationId: string, organizationId: string): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
 }
 
+export class DatabaseStorage implements IStorage {
+  // User operations
+  async getUser(id: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    return result[0];
+  }
+
+  async upsertUser(user: UpsertUser): Promise<User> {
+    const result = await db
+      .insert(users)
+      .values(user)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileImageUrl: user.profileImageUrl,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result[0];
+  }
+
+  // Organization operations
+  async getOrganization(id: string): Promise<Organization | undefined> {
+    const result = await db.select().from(organizations).where(eq(organizations.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createOrganization(org: InsertOrganization): Promise<Organization> {
+    const result = await db.insert(organizations).values(org).returning();
+    return result[0];
+  }
+
+  // Applications
+  async getApplications(organizationId: string): Promise<Application[]> {
+    return await db
+      .select()
+      .from(applications)
+      .where(eq(applications.organizationId, organizationId))
+      .orderBy(asc(applications.name));
+  }
+
+  async getApplication(id: string, organizationId: string): Promise<Application | undefined> {
+    const result = await db
+      .select()
+      .from(applications)
+      .where(and(eq(applications.id, id), eq(applications.organizationId, organizationId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createApplication(app: InsertApplication): Promise<Application> {
+    const result = await db.insert(applications).values(app).returning();
+    return result[0];
+  }
+
+  async updateApplication(id: string, organizationId: string, app: Partial<InsertApplication>): Promise<Application | undefined> {
+    const result = await db
+      .update(applications)
+      .set(app)
+      .where(and(eq(applications.id, id), eq(applications.organizationId, organizationId)))
+      .returning();
+    return result[0];
+  }
+
+  async deleteApplication(id: string, organizationId: string): Promise<boolean> {
+    const result = await db
+      .delete(applications)
+      .where(and(eq(applications.id, id), eq(applications.organizationId, organizationId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Licenses
+  async getLicenses(organizationId: string): Promise<License[]> {
+    return await db
+      .select()
+      .from(licenses)
+      .where(eq(licenses.organizationId, organizationId))
+      .orderBy(desc(licenses.createdAt));
+  }
+
+  async getLicensesByApplicationId(applicationId: string, organizationId: string): Promise<License | undefined> {
+    const result = await db
+      .select()
+      .from(licenses)
+      .where(and(eq(licenses.applicationId, applicationId), eq(licenses.organizationId, organizationId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createLicense(license: InsertLicense): Promise<License> {
+    const result = await db.insert(licenses).values(license).returning();
+    return result[0];
+  }
+
+  async updateLicense(id: string, organizationId: string, license: Partial<InsertLicense>): Promise<License | undefined> {
+    const result = await db
+      .update(licenses)
+      .set({ ...license, updatedAt: new Date() })
+      .where(and(eq(licenses.id, id), eq(licenses.organizationId, organizationId)))
+      .returning();
+    return result[0];
+  }
+
+  async deleteLicense(id: string, organizationId: string): Promise<boolean> {
+    const result = await db
+      .delete(licenses)
+      .where(and(eq(licenses.id, id), eq(licenses.organizationId, organizationId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Renewals
+  async getRenewals(organizationId: string): Promise<Renewal[]> {
+    return await db
+      .select()
+      .from(renewals)
+      .where(eq(renewals.organizationId, organizationId))
+      .orderBy(asc(renewals.renewalDate));
+  }
+
+  async getRenewal(id: string, organizationId: string): Promise<Renewal | undefined> {
+    const result = await db
+      .select()
+      .from(renewals)
+      .where(and(eq(renewals.id, id), eq(renewals.organizationId, organizationId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getRenewalsByApplicationId(applicationId: string, organizationId: string): Promise<Renewal[]> {
+    return await db
+      .select()
+      .from(renewals)
+      .where(and(eq(renewals.applicationId, applicationId), eq(renewals.organizationId, organizationId)))
+      .orderBy(asc(renewals.renewalDate));
+  }
+
+  async createRenewal(renewal: InsertRenewal): Promise<Renewal> {
+    const result = await db.insert(renewals).values(renewal).returning();
+    return result[0];
+  }
+
+  async updateRenewal(id: string, organizationId: string, renewal: Partial<InsertRenewal>): Promise<Renewal | undefined> {
+    const result = await db
+      .update(renewals)
+      .set(renewal)
+      .where(and(eq(renewals.id, id), eq(renewals.organizationId, organizationId)))
+      .returning();
+    return result[0];
+  }
+
+  async deleteRenewal(id: string, organizationId: string): Promise<boolean> {
+    const result = await db
+      .delete(renewals)
+      .where(and(eq(renewals.id, id), eq(renewals.organizationId, organizationId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Recommendations
+  async getRecommendations(organizationId: string): Promise<Recommendation[]> {
+    return await db
+      .select()
+      .from(recommendations)
+      .where(and(eq(recommendations.organizationId, organizationId), eq(recommendations.dismissed, false)))
+      .orderBy(desc(recommendations.createdAt));
+  }
+
+  async getRecommendation(id: string, organizationId: string): Promise<Recommendation | undefined> {
+    const result = await db
+      .select()
+      .from(recommendations)
+      .where(and(eq(recommendations.id, id), eq(recommendations.organizationId, organizationId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createRecommendation(rec: InsertRecommendation): Promise<Recommendation> {
+    const result = await db.insert(recommendations).values(rec).returning();
+    return result[0];
+  }
+
+  async updateRecommendation(id: string, organizationId: string, rec: Partial<InsertRecommendation>): Promise<Recommendation | undefined> {
+    const result = await db
+      .update(recommendations)
+      .set(rec)
+      .where(and(eq(recommendations.id, id), eq(recommendations.organizationId, organizationId)))
+      .returning();
+    return result[0];
+  }
+
+  async deleteRecommendation(id: string, organizationId: string): Promise<boolean> {
+    const result = await db
+      .delete(recommendations)
+      .where(and(eq(recommendations.id, id), eq(recommendations.organizationId, organizationId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Spending History
+  async getSpendingHistory(organizationId: string): Promise<SpendingHistory[]> {
+    const results = await db
+      .select()
+      .from(spendingHistory)
+      .where(eq(spendingHistory.organizationId, organizationId))
+      .orderBy(asc(spendingHistory.year));
+    
+    // Sort by year and month
+    return results.sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month);
+    });
+  }
+
+  async createSpendingHistory(history: InsertSpendingHistory): Promise<SpendingHistory> {
+    const result = await db.insert(spendingHistory).values(history).returning();
+    return result[0];
+  }
+
+  // Conversations
+  async getConversations(organizationId: string): Promise<Conversation[]> {
+    const results = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.organizationId, organizationId))
+      .orderBy(desc(conversations.lastMessageAt));
+    
+    // Sort by lastMessageAt or createdAt
+    return results.sort((a, b) => {
+      const aTime = a.lastMessageAt || a.createdAt;
+      const bTime = b.lastMessageAt || b.createdAt;
+      return bTime.getTime() - aTime.getTime();
+    });
+  }
+
+  async getConversation(id: string, organizationId: string): Promise<Conversation | undefined> {
+    const result = await db
+      .select()
+      .from(conversations)
+      .where(and(eq(conversations.id, id), eq(conversations.organizationId, organizationId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getConversationsByType(type: string, organizationId: string): Promise<Conversation[]> {
+    const results = await db
+      .select()
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.type, type),
+          eq(conversations.organizationId, organizationId),
+          eq(conversations.status, 'active')
+        )
+      )
+      .orderBy(desc(conversations.lastMessageAt));
+    
+    // Sort by lastMessageAt or createdAt
+    return results.sort((a, b) => {
+      const aTime = a.lastMessageAt || a.createdAt;
+      const bTime = b.lastMessageAt || b.createdAt;
+      return bTime.getTime() - aTime.getTime();
+    });
+  }
+
+  async getConversationsByApplicationId(applicationId: string, organizationId: string): Promise<Conversation[]> {
+    return await db
+      .select()
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.applicationId, applicationId),
+          eq(conversations.organizationId, organizationId),
+          eq(conversations.status, 'active')
+        )
+      )
+      .orderBy(desc(conversations.createdAt));
+  }
+
+  async createConversation(conv: InsertConversation): Promise<Conversation> {
+    const result = await db.insert(conversations).values(conv).returning();
+    return result[0];
+  }
+
+  async updateConversation(id: string, organizationId: string, conv: Partial<InsertConversation>): Promise<Conversation | undefined> {
+    const result = await db
+      .update(conversations)
+      .set(conv)
+      .where(and(eq(conversations.id, id), eq(conversations.organizationId, organizationId)))
+      .returning();
+    return result[0];
+  }
+
+  async deleteConversation(id: string, organizationId: string): Promise<boolean> {
+    const result = await db
+      .delete(conversations)
+      .where(and(eq(conversations.id, id), eq(conversations.organizationId, organizationId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Messages
+  async getMessages(conversationId: string, organizationId: string): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(and(eq(messages.conversationId, conversationId), eq(messages.organizationId, organizationId)))
+      .orderBy(asc(messages.createdAt));
+  }
+
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const result = await db.insert(messages).values(message).returning();
+    const createdMessage = result[0];
+    
+    // Update conversation lastMessageAt
+    await db
+      .update(conversations)
+      .set({ lastMessageAt: createdMessage.createdAt })
+      .where(eq(conversations.id, message.conversationId));
+    
+    return createdMessage;
+  }
+}
+
+// Export DatabaseStorage as default
+export const storage = new DatabaseStorage();
+
+/*
+// MemStorage kept for reference - commented out
 export class MemStorage implements IStorage {
   private applications: Map<string, Application>;
   private licenses: Map<string, License>;
@@ -340,5 +698,4 @@ export class MemStorage implements IStorage {
     return message;
   }
 }
-
-export const storage = new MemStorage();
+*/
