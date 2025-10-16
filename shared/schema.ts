@@ -47,6 +47,10 @@ export const applications = pgTable("applications", {
   monthlyCost: decimal("monthly_cost", { precision: 10, scale: 2 }).notNull(),
   description: text("description"),
   logoUrl: text("logo_url"),
+  // ROI Measurement Add-on Feature
+  roiEnabled: boolean("roi_enabled").default(false).notNull(),
+  monthlyValue: decimal("monthly_value", { precision: 10, scale: 2 }).default("0"),
+  roiNotes: text("roi_notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
