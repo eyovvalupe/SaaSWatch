@@ -141,9 +141,9 @@ export default function Dashboard() {
       </div>
 
       {actionRecommendations.length > 0 && (
-        <div className="space-y-4">
+        <div className="bg-black rounded-lg p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Recommended Actions</h2>
+            <h2 className="text-lg font-semibold text-white">Recommended Actions</h2>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {actionRecommendations.map((rec) => (

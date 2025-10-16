@@ -82,7 +82,7 @@ export function ActionRecommendation({
   const PriorityIcon = priorityInfo.icon;
 
   return (
-    <Card data-testid={`card-action-${id}`} className="hover-elevate">
+    <Card data-testid={`card-action-${id}`} className="hover-elevate bg-zinc-900 border-zinc-800">
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
           <div className={`rounded-md p-2 ${config.bgColor} shrink-0`}>
@@ -92,7 +92,7 @@ export function ActionRecommendation({
             <div className="flex items-start justify-between gap-2 mb-1">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-semibold text-sm" data-testid={`text-action-title-${id}`}>
+                  <h3 className="font-semibold text-sm text-white" data-testid={`text-action-title-${id}`}>
                     {title}
                   </h3>
                   <Badge variant="outline" className={priorityInfo.color}>
@@ -100,46 +100,46 @@ export function ActionRecommendation({
                     {priority}
                   </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground mb-1">{appName}</p>
+                <p className="text-xs text-zinc-400 mb-1">{appName}</p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mb-3">{description}</p>
+            <p className="text-xs text-zinc-400 mb-3">{description}</p>
             
             {metadata && (
               <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
                 {metadata.currentCost !== undefined && metadata.potentialCost !== undefined && (
                   <>
                     <div>
-                      <span className="text-muted-foreground">Current: </span>
-                      <span className="font-mono font-semibold">${metadata.currentCost}/mo</span>
+                      <span className="text-zinc-400">Current: </span>
+                      <span className="font-mono font-semibold text-white">${metadata.currentCost}/mo</span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">After: </span>
+                      <span className="text-zinc-400">After: </span>
                       <span className="font-mono font-semibold text-chart-2">${metadata.potentialCost}/mo</span>
                     </div>
                   </>
                 )}
                 {metadata.renewalDate && (
                   <div>
-                    <span className="text-muted-foreground">Renewal: </span>
-                    <span className="font-mono">{metadata.renewalDate}</span>
+                    <span className="text-zinc-400">Renewal: </span>
+                    <span className="font-mono text-white">{metadata.renewalDate}</span>
                   </div>
                 )}
                 {metadata.contractValue !== undefined && (
                   <div>
-                    <span className="text-muted-foreground">Contract: </span>
-                    <span className="font-mono font-semibold">${metadata.contractValue.toLocaleString()}</span>
+                    <span className="text-zinc-400">Contract: </span>
+                    <span className="font-mono font-semibold text-white">${metadata.contractValue.toLocaleString()}</span>
                   </div>
                 )}
                 {metadata.currentUsers !== undefined && metadata.activeUsers !== undefined && (
                   <>
                     <div>
-                      <span className="text-muted-foreground">Licenses: </span>
-                      <span className="font-mono">{metadata.currentUsers}</span>
+                      <span className="text-zinc-400">Licenses: </span>
+                      <span className="font-mono text-white">{metadata.currentUsers}</span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Active: </span>
-                      <span className="font-mono">{metadata.activeUsers}</span>
+                      <span className="text-zinc-400">Active: </span>
+                      <span className="font-mono text-white">{metadata.activeUsers}</span>
                     </div>
                   </>
                 )}
@@ -151,6 +151,7 @@ export function ActionRecommendation({
               size="sm"
               onClick={onAction}
               data-testid={`button-action-${id}`}
+              className="border-zinc-700 text-white hover:bg-zinc-800"
             >
               {actionLabel}
             </Button>
