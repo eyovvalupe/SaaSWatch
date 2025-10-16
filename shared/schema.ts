@@ -3,8 +3,31 @@ import { pgTable, text, varchar, integer, timestamp, decimal, boolean } from "dr
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Organizations table - for multi-tenancy
+export const organizations = pgTable("organizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  domain: text("domain").unique(),
+  plan: text("plan").notNull().default("starter"), // starter, pro, enterprise
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Users table - for authentication
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  name: text("name").notNull(),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("user"), // admin, user, viewer
+  replitId: text("replit_id").unique(), // For Replit Auth integration
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const applications = pgTable("applications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   category: text("category").notNull(),
   vendor: text("vendor"),
@@ -17,6 +40,7 @@ export const applications = pgTable("applications", {
 
 export const licenses = pgTable("licenses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   applicationId: varchar("application_id").notNull().references(() => applications.id, { onDelete: "cascade" }),
   totalLicenses: integer("total_licenses").notNull(),
   activeUsers: integer("active_users").notNull().default(0),
@@ -27,6 +51,7 @@ export const licenses = pgTable("licenses", {
 
 export const renewals = pgTable("renewals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   applicationId: varchar("application_id").notNull().references(() => applications.id, { onDelete: "cascade" }),
   renewalDate: timestamp("renewal_date").notNull(),
   annualCost: decimal("annual_cost", { precision: 10, scale: 2 }).notNull(),
@@ -38,6 +63,7 @@ export const renewals = pgTable("renewals", {
 
 export const recommendations = pgTable("recommendations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   applicationId: varchar("application_id").notNull().references(() => applications.id, { onDelete: "cascade" }),
   type: text("type").notNull(), // downgrade, renew, track-users, review-renewal, cost-review
   title: text("title").notNull(),
@@ -56,6 +82,7 @@ export const recommendations = pgTable("recommendations", {
 
 export const spendingHistory = pgTable("spending_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   month: text("month").notNull(),
   year: integer("year").notNull(),
   totalSpend: decimal("total_spend", { precision: 10, scale: 2 }).notNull(),
@@ -64,6 +91,7 @@ export const spendingHistory = pgTable("spending_history", {
 
 export const conversations = pgTable("conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   type: text("type").notNull(), // internal (team chat) or vendor (CRM)
   applicationId: varchar("application_id").references(() => applications.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
@@ -75,6 +103,7 @@ export const conversations = pgTable("conversations", {
 
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   conversationId: varchar("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
   senderName: text("sender_name").notNull(), // user name
   senderRole: text("sender_role").notNull(), // admin, user, vendor
@@ -85,6 +114,18 @@ export const messages = pgTable("messages", {
 });
 
 // Insert Schemas
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertApplicationSchema = createInsertSchema(applications).omit({
   id: true,
   createdAt: true,
@@ -122,6 +163,12 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
 });
 
 // Types
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type Organization = typeof organizations.$inferSelect;
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+
 export type InsertApplication = z.infer<typeof insertApplicationSchema>;
 export type Application = typeof applications.$inferSelect;
 
