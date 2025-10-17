@@ -10,6 +10,10 @@ This is a **SaaS Management Platform** designed to help organizations track, man
 - Renewal tracking with automatic notifications
 - Spending analytics and trend visualization
 - AI-driven cost optimization recommendations
+- **ROI Measurement (Add-on Feature)** - Track return on investment for each SaaS application
+  - Calculate ROI percentage based on value generated vs. cost
+  - Document ROI calculation methodology with notes
+  - View aggregated ROI metrics across all tracked applications
 - Real-time team chat for internal collaboration between license holders
 - Vendor CRM for admin-vendor communications and negotiations
 - **Multi-tenant architecture** with complete data isolation per organization
@@ -21,6 +25,18 @@ This is a **SaaS Management Platform** designed to help organizations track, man
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
+
+### October 16, 2025 - ROI Measurement Add-on Feature
+- **Implemented ROI Measurement System** as an optional add-on feature for premium clients
+  - Added ROI fields to applications table: roiEnabled, monthlyValue, roiNotes
+  - Created ROIMeasurement component for tracking value generated vs. cost
+  - Built dedicated ROI page showing aggregated metrics across all applications
+  - ROI calculation: (Value Generated - Cost) / Cost × 100
+  - Users can enable/disable ROI tracking per application
+  - Document calculation methodology with custom notes
+- **Updated Branding to Appfuze.ai**
+  - Changed from "APPFUZE.AI" to "Appfuze.ai" (capital A, lowercase rest)
+  - Updated across all UI components, pages, and documentation
 
 ### October 16, 2025 - Production-Ready Multi-Tenancy & Authentication
 - **Migrated from in-memory to PostgreSQL database**

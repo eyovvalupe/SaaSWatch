@@ -53,7 +53,7 @@ export function ROIMeasurement({ application }: ROIMeasurementProps) {
   const calculateROI = () => {
     const cost = parseFloat(application.monthlyCost || "0");
     const value = parseFloat(monthlyValue || "0");
-    if (cost === 0) return 0;
+    if (cost === 0) return "0.0";
     return ((value - cost) / cost * 100).toFixed(1);
   };
 
