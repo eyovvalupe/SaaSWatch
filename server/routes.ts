@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { seedDemoDataForOrganization } from "./seed";
 import { 
   insertApplicationSchema,
   insertLicenseSchema,
@@ -28,6 +29,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(user);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user" });
+    }
+  });
+
+  // Seed demo data for the current user's organization
+  app.post("/api/seed-demo", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ error: "User not associated with an organization" });
+      }
+      
+      await seedDemoDataForOrganization(user.organizationId);
+      res.json({ message: "Demo data seeded successfully" });
+    } catch (error) {
+      console.error("Error seeding demo data:", error);
+      res.status(500).json({ error: "Failed to seed demo data" });
     }
   });
 

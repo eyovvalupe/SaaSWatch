@@ -16,6 +16,16 @@ export async function seedData() {
   }
 
   console.log("Seeding initial data...");
+  await seedDemoDataForOrganization(demoOrg.id);
+}
+
+export async function seedDemoDataForOrganization(organizationId: string) {
+  // Check if data already exists for this organization
+  const existingApps = await storage.getApplications(organizationId);
+  if (existingApps.length > 0) {
+    console.log("Data already seeded for this organization, skipping...");
+    return;
+  }
 
   // Create applications
   const slack = await storage.createApplication({
@@ -26,7 +36,7 @@ export async function seedData() {
     monthlyCost: "800",
     description: "Team communication platform",
     logoUrl: "/assets/generated_images/Slack_app_icon_a668dc5a.png",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   const salesforce = await storage.createApplication({
@@ -37,7 +47,7 @@ export async function seedData() {
     monthlyCost: "1500",
     description: "Customer relationship management",
     logoUrl: "/assets/generated_images/Salesforce_app_icon_0d18cc45.png",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   const zoom = await storage.createApplication({
@@ -48,7 +58,7 @@ export async function seedData() {
     monthlyCost: "300",
     description: "Video meetings and webinars",
     logoUrl: "/assets/generated_images/Zoom_app_icon_3be960fb.png",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   const github = await storage.createApplication({
@@ -59,7 +69,7 @@ export async function seedData() {
     monthlyCost: "840",
     description: "Code hosting and collaboration",
     logoUrl: "/assets/generated_images/GitHub_app_icon_40d531dd.png",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   const figma = await storage.createApplication({
@@ -70,7 +80,7 @@ export async function seedData() {
     monthlyCost: "300",
     description: "Collaborative design tool",
     logoUrl: "/assets/generated_images/Figma_app_icon_91c3879c.png",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   const notion = await storage.createApplication({
@@ -81,7 +91,7 @@ export async function seedData() {
     monthlyCost: "80",
     description: "All-in-one workspace",
     logoUrl: "/assets/generated_images/Notion_app_icon_9574a133.png",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   // Create licenses
@@ -90,7 +100,7 @@ export async function seedData() {
     totalLicenses: 50,
     activeUsers: 45,
     costPerLicense: "16",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createLicense({
@@ -98,7 +108,7 @@ export async function seedData() {
     totalLicenses: 30,
     activeUsers: 28,
     costPerLicense: "50",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createLicense({
@@ -106,7 +116,7 @@ export async function seedData() {
     totalLicenses: 25,
     activeUsers: 15,
     costPerLicense: "12",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createLicense({
@@ -114,7 +124,7 @@ export async function seedData() {
     totalLicenses: 40,
     activeUsers: 38,
     costPerLicense: "21",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createLicense({
@@ -122,7 +132,7 @@ export async function seedData() {
     totalLicenses: 20,
     activeUsers: 12,
     costPerLicense: "15",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   // Create renewals
@@ -134,7 +144,7 @@ export async function seedData() {
     annualCost: "18000",
     contractValue: "18000",
     autoRenew: true,
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createRenewal({
@@ -143,7 +153,7 @@ export async function seedData() {
     annualCost: "10080",
     contractValue: "10080",
     autoRenew: true,
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createRenewal({
@@ -152,7 +162,7 @@ export async function seedData() {
     annualCost: "9600",
     contractValue: "9600",
     autoRenew: true,
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createRenewal({
@@ -161,7 +171,7 @@ export async function seedData() {
     annualCost: "3600",
     contractValue: "3600",
     autoRenew: false,
-    organizationId: demoOrg.id
+    organizationId
   });
 
   // Create recommendations
@@ -176,7 +186,7 @@ export async function seedData() {
     potentialCost: "180",
     currentUsers: 25,
     activeUsers: 15,
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createRecommendation({
@@ -188,7 +198,7 @@ export async function seedData() {
     actionLabel: "Review Renewal",
     renewalDate: "Dec 15, 2024",
     contractValue: "18000",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createRecommendation({
@@ -200,7 +210,7 @@ export async function seedData() {
     actionLabel: "View Users",
     currentUsers: 50,
     activeUsers: 40,
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createRecommendation({
@@ -213,7 +223,7 @@ export async function seedData() {
     currentCost: "450",
     potentialCost: "300",
     contractValue: "3600",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   // Create spending history
@@ -226,7 +236,7 @@ export async function seedData() {
       month: months[i],
       year: currentYear,
       totalSpend: spendValues[i].toString(),
-      organizationId: demoOrg.id
+      organizationId
     });
   }
 
@@ -236,7 +246,7 @@ export async function seedData() {
     applicationId: slack.id,
     title: "Slack Usage Discussion",
     status: "active",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createMessage({
@@ -245,7 +255,7 @@ export async function seedData() {
     senderRole: "user",
     content: "Has anyone noticed the new Slack features in the latest update?",
     messageType: "text",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createMessage({
@@ -254,7 +264,7 @@ export async function seedData() {
     senderRole: "user",
     content: "Yes! The new workflow automation is really helpful for our team.",
     messageType: "text",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   const githubChat = await storage.createConversation({
@@ -262,7 +272,7 @@ export async function seedData() {
     applicationId: github.id,
     title: "GitHub License Optimization",
     status: "active",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createMessage({
@@ -271,7 +281,7 @@ export async function seedData() {
     senderRole: "admin",
     content: "Team, we have 5 inactive licenses on GitHub. Let's review who needs access.",
     messageType: "text",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createMessage({
@@ -280,7 +290,7 @@ export async function seedData() {
     senderRole: "user",
     content: "I can help audit the team members. Some folks from the old project might not need access anymore.",
     messageType: "text",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   // Create conversations - Vendor CRM
@@ -290,7 +300,7 @@ export async function seedData() {
     title: "Salesforce License Negotiation",
     vendorName: "Salesforce Account Team",
     status: "active",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createMessage({
@@ -299,7 +309,7 @@ export async function seedData() {
     senderRole: "admin",
     content: "Hi team, we're looking to optimize our Salesforce licenses. We currently have 30 licenses but only 28 active users. Can we discuss reducing our plan?",
     messageType: "text",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createMessage({
@@ -308,7 +318,7 @@ export async function seedData() {
     senderRole: "vendor",
     content: "Thank you for reaching out! I'd be happy to review your usage. Let me pull up your account details and we can discuss options for right-sizing your subscription.",
     messageType: "text",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createMessage({
@@ -317,7 +327,7 @@ export async function seedData() {
     senderRole: "admin",
     content: "That would be great. We're also approaching our renewal date and want to make sure we're getting the best value.",
     messageType: "text",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   const zoomCRM = await storage.createConversation({
@@ -326,7 +336,7 @@ export async function seedData() {
     title: "Zoom Plan Downgrade Discussion",
     vendorName: "Zoom Sales Team",
     status: "active",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createMessage({
@@ -335,7 +345,7 @@ export async function seedData() {
     senderRole: "admin",
     content: "Hello, our team is considering downgrading from our current Zoom plan. We have 25 licenses but only 15 active users. What options do we have?",
     messageType: "text",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   await storage.createMessage({
@@ -344,7 +354,7 @@ export async function seedData() {
     senderRole: "vendor",
     content: "Hi there! I can definitely help you find a better fit. Based on your usage, we have a Business plan that would work well for 15-20 users. This could save you approximately $120/month.",
     messageType: "text",
-    organizationId: demoOrg.id
+    organizationId
   });
 
   console.log("Data seeded successfully!");

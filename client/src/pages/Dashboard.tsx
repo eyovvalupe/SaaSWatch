@@ -3,16 +3,46 @@ import { SpendingChart } from "@/components/SpendingChart";
 import { ApplicationCard } from "@/components/ApplicationCard";
 import { ActionRecommendation } from "@/components/ActionRecommendation";
 import { RenewalCalendar } from "@/components/RenewalCalendar";
-import { Package, DollarSign, CreditCard, TrendingUp } from "lucide-react";
+import { Package, DollarSign, CreditCard, TrendingUp, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, Plus } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { Application, License, Renewal, Recommendation, SpendingHistory } from "@shared/schema";
 
 export default function Dashboard() {
+  const { toast } = useToast();
+  
   const { data: applications = [], isLoading: appsLoading } = useQuery<Application[]>({
     queryKey: ['/api/applications'],
+  });
+
+  const seedDemoMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', '/api/seed-demo');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/applications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/renewals'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/recommendations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/spending-history'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      toast({
+        title: "Demo Data Loaded",
+        description: "Your workspace is now populated with sample SaaS applications.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to load demo data. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const { data: licenses = [] } = useQuery<License[]>({
@@ -89,6 +119,60 @@ export default function Dashboard() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show empty state if no applications
+  if (applications.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+        <Card className="w-full max-w-2xl">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <Database className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">Welcome to Appfuze.ai</CardTitle>
+            <CardDescription className="text-base mt-2">
+              Your workspace is empty. Get started by loading demo data to explore the platform.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground">Demo data includes:</p>
+              <ul className="space-y-2 list-disc list-inside">
+                <li>6 sample SaaS applications (Slack, Salesforce, Zoom, GitHub, Figma, Notion)</li>
+                <li>License tracking and utilization metrics</li>
+                <li>Contract renewals and scheduling</li>
+                <li>AI-driven cost optimization recommendations</li>
+                <li>Spending trends and analytics</li>
+                <li>Team chat conversations and vendor CRM threads</li>
+              </ul>
+            </div>
+            <Button 
+              onClick={() => seedDemoMutation.mutate()}
+              disabled={seedDemoMutation.isPending}
+              size="lg"
+              className="w-full mt-4"
+              data-testid="button-load-demo-data"
+            >
+              {seedDemoMutation.isPending ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Loading Demo Data...
+                </>
+              ) : (
+                <>
+                  <Database className="mr-2 h-4 w-4" />
+                  Load Demo Data
+                </>
+              )}
+            </Button>
+            <p className="text-xs text-center text-muted-foreground mt-2">
+              Or manually add your first application using the "Add Application" button
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
