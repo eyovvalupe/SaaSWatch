@@ -3,6 +3,7 @@ import logoImage from "@assets/generated_images/APPFUZE.AI_company_logo_00f9e95d
 
 export default function Landing() {
   const handleLogin = () => {
+    console.log("Login button clicked - redirecting to /api/login");
     window.location.href = '/api/login';
   };
 
@@ -37,6 +38,17 @@ export default function Landing() {
           >
             Log In to Get Started
           </Button>
+          
+          <div className="mt-4">
+            <p className="text-sm text-muted-foreground mb-2">Alternative: Click the link below to login</p>
+            <a 
+              href="/api/login" 
+              className="text-primary underline hover:text-primary/80"
+              data-testid="link-login-alternative"
+            >
+              Direct Login Link
+            </a>
+          </div>
           
           <div className="grid md:grid-cols-3 gap-6 pt-8 text-left">
             <div className="space-y-2">
