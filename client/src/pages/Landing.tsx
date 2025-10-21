@@ -30,24 +30,24 @@ export default function Landing() {
         </div>
 
         <div className="space-y-6 pt-8">
-          <Button 
-            size="lg" 
-            onClick={handleLogin}
-            className="px-8 py-6 text-lg"
-            data-testid="button-login"
-          >
-            Log In to Get Started
-          </Button>
-          
-          <div className="mt-4">
-            <p className="text-sm text-muted-foreground mb-2">Alternative: Click the link below to login</p>
-            <a 
-              href="/api/login" 
-              className="text-primary underline hover:text-primary/80"
-              data-testid="link-login-alternative"
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Button 
+              size="lg" 
+              onClick={handleLogin}
+              className="px-8 py-6 text-lg"
+              data-testid="button-login"
             >
-              Direct Login Link
-            </a>
+              Log In to Get Started
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline"
+              onClick={() => window.location.href = '/demo'}
+              className="px-8 py-6 text-lg"
+              data-testid="button-view-demo"
+            >
+              View Demo
+            </Button>
           </div>
           
           <div className="grid md:grid-cols-3 gap-6 pt-8 text-left">

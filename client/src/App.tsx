@@ -15,6 +15,7 @@ import TeamChat from "@/pages/TeamChat";
 import VendorCRM from "@/pages/VendorCRM";
 import ROIPage from "@/pages/ROIPage";
 import Landing from "@/pages/Landing";
+import DemoPreview from "@/pages/DemoPreview";
 import NotFound from "@/pages/not-found";
 import logoImage from "@assets/generated_images/APPFUZE.AI_company_logo_00f9e95d.png";
 
@@ -25,6 +26,7 @@ function Router() {
     return (
       <Switch>
         <Route path="/" component={Landing} />
+        <Route path="/demo" component={DemoPreview} />
         <Route component={Landing} />
       </Switch>
     );
