@@ -16,8 +16,35 @@ import type { Application, License, Renewal, Recommendation, SpendingHistory } f
 export default function Dashboard() {
   const { toast } = useToast();
   
-  const { data: applications = [], isLoading: appsLoading } = useQuery<Application[]>({
+  const { data: applications = [], isLoading: appsLoading, error: appsError } = useQuery<Application[]>({
     queryKey: ['/api/applications'],
+    retry: false
+  });
+
+  const initializeAccountMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', '/api/initialize-account');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/applications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/licenses'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/renewals'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/recommendations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/spending-history'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      toast({
+        title: "Account Initialized",
+        description: "Your organization has been created! You can now load demo data or start adding your own applications.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to initialize account. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const seedDemoMutation = useMutation({
@@ -45,20 +72,28 @@ export default function Dashboard() {
     },
   });
 
+  // Check if user needs to initialize their account (no organization)
+  const needsInitialization = appsError && 
+    (appsError as any)?.message?.includes('not associated with an organization');
+
   const { data: licenses = [] } = useQuery<License[]>({
     queryKey: ['/api/licenses'],
+    enabled: !needsInitialization && !appsLoading
   });
 
   const { data: renewals = [] } = useQuery<Renewal[]>({
     queryKey: ['/api/renewals'],
+    enabled: !needsInitialization && !appsLoading
   });
 
   const { data: recommendations = [] } = useQuery<Recommendation[]>({
     queryKey: ['/api/recommendations'],
+    enabled: !needsInitialization && !appsLoading
   });
 
   const { data: spendingHistory = [] } = useQuery<SpendingHistory[]>({
     queryKey: ['/api/spending-history'],
+    enabled: !needsInitialization && !appsLoading
   });
 
   const { data: stats } = useQuery<{
@@ -69,6 +104,7 @@ export default function Dashboard() {
     potentialSavings: number;
   }>({
     queryKey: ['/api/dashboard/stats'],
+    enabled: !needsInitialization && !appsLoading
   });
 
   // Transform spending history for chart
@@ -119,6 +155,54 @@ export default function Dashboard() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (needsInitialization) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+        <Card className="w-full max-w-2xl border-primary/50">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <Database className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">Initialize Your Account</CardTitle>
+            <CardDescription className="text-base mt-2">
+              Welcome! Let's set up your organization to get started with Appfuze.ai.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground">What happens next:</p>
+              <ul className="space-y-2 list-disc list-inside">
+                <li>We'll create a personal organization for you</li>
+                <li>You'll get access to the full Appfuze.ai platform</li>
+                <li>You can load demo data or add your own SaaS applications</li>
+                <li>Track spending, licenses, and optimize costs</li>
+              </ul>
+            </div>
+            <Button 
+              onClick={() => initializeAccountMutation.mutate()}
+              disabled={initializeAccountMutation.isPending}
+              size="lg"
+              className="w-full mt-4"
+              data-testid="button-initialize-account"
+            >
+              {initializeAccountMutation.isPending ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Initializing...
+                </>
+              ) : (
+                <>
+                  <Database className="mr-2 h-4 w-4" />
+                  Initialize Account
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

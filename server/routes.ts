@@ -32,6 +32,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Initialize account - create organization for user
+  app.post("/api/initialize-account", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Check if user already has an organization
+      if (user.organizationId) {
+        return res.status(400).json({ error: "User already has an organization" });
+      }
+
+      // Create new organization for the user
+      const userName = user.firstName || (user.email ? user.email.split('@')[0] : 'User');
+      const organization = await storage.createOrganization({
+        name: `${userName}'s Organization`,
+        plan: "free"
+      });
+
+      // Update user with organization ID
+      const updatedUser = await storage.upsertUser({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        profileImageUrl: user.profileImageUrl,
+        organizationId: organization.id
+      });
+
+      res.json({ 
+        message: "Account initialized successfully",
+        user: updatedUser,
+        organization
+      });
+    } catch (error) {
+      console.error("Error initializing account:", error);
+      res.status(500).json({ error: "Failed to initialize account" });
+    }
+  });
+
   // Seed demo data for the current user's organization
   app.post("/api/seed-demo", isAuthenticated, async (req, res) => {
     try {
