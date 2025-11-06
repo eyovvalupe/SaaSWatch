@@ -1,9 +1,16 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { SiSlack, SiSalesforce, SiZoom, SiGithub, SiFigma, SiNotion } from "react-icons/si";
 import { Package } from "lucide-react";
+import { useLocation } from "wouter";
 
 interface ApplicationCardProps {
   id: string;
@@ -33,6 +40,7 @@ const logoMap: Record<string, any> = {
 export function ApplicationCard({ id, name, category, monthlyCost, status, logo, onClick }: ApplicationCardProps) {
   const statusInfo = statusConfig[status];
   const LogoIcon = logoMap[name] || Package;
+  const [, setLocation] = useLocation();
   
   return (
     <Card 
@@ -56,18 +64,33 @@ export function ApplicationCard({ id, name, category, monthlyCost, status, logo,
                 </h3>
                 <p className="text-xs text-muted-foreground truncate" data-testid={`text-app-category-${id}`}>{category}</p>
               </div>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="h-6 w-6 shrink-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  console.log('App menu clicked');
-                }}
-                data-testid={`button-app-menu-${id}`}
-              >
-                <MoreVertical className="h-3 w-3" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className="h-6 w-6 shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                    data-testid={`button-app-menu-${id}`}
+                  >
+                    <MoreVertical className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLocation(`/invoice/${id}`);
+                    }}
+                    data-testid={`menu-item-view-invoice-${id}`}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    View Invoice
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             <div className="mt-3 flex items-center justify-between gap-2">
               <Badge variant="outline" className={statusInfo.className}>
