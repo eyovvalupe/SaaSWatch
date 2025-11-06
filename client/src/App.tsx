@@ -5,19 +5,25 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { ThemeProvider } from "@/components/ThemeProvider";
+import { ThemeProvider, useTheme } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/pages/Dashboard";
+import Analytics from "@/pages/Analytics";
+import Applications from "@/pages/Applications";
+import ApplicationDetail from "@/pages/ApplicationDetail";
 import TeamChat from "@/pages/TeamChat";
 import VendorCRM from "@/pages/VendorCRM";
 import ROIPage from "@/pages/ROIPage";
+import ViewInvoice from "@/pages/ViewInvoice";
+import Settings from "@/pages/Settings";
 import Landing from "@/pages/Landing";
 import DemoPreview from "@/pages/DemoPreview";
 import NotFound from "@/pages/not-found";
-import logoImage from "@assets/generated_images/APPFUZE.AI_company_logo_00f9e95d.png";
+import logoImageLight from "@assets/generated_images/appuze.png";
+import logoImageDark from "@assets/generated_images/appuze_dark.png";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -36,13 +42,15 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/demo" component={DemoPreview} />
-      <Route path="/applications" component={Dashboard} />
+      <Route path="/applications" component={Applications} />
+      <Route path="/applications/:id" component={ApplicationDetail} />
       <Route path="/licenses" component={Dashboard} />
-      <Route path="/analytics" component={Dashboard} />
+      <Route path="/analytics" component={Analytics} />
       <Route path="/roi" component={ROIPage} />
+      <Route path="/invoice/:appId" component={ViewInvoice} />
       <Route path="/team-chat" component={TeamChat} />
       <Route path="/vendor-crm" component={VendorCRM} />
-      <Route path="/settings" component={Dashboard} />
+      <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -68,9 +76,10 @@ function App() {
 
 function AuthWrapper({ style }: { style: any }) {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { theme } = useTheme();
 
   const handleLogout = () => {
-    window.location.href = '/api/logout';
+    window.location.href = "/api/logout";
   };
 
   if (isLoading || !isAuthenticated) {
@@ -85,19 +94,22 @@ function AuthWrapper({ style }: { style: any }) {
           <header className="flex items-center justify-between gap-4 p-4 border-b">
             <div className="flex items-center gap-4">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
-              <img 
-                src={logoImage} 
-                alt="Appfuze.ai" 
+              <img
+                src={theme === "dark" ? logoImageDark : logoImageLight}
+                alt="AppUze.ai"
                 className="h-7 w-auto object-contain"
                 data-testid="img-header-logo"
               />
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground" data-testid="text-user-name">
+              <span
+                className="text-sm text-muted-foreground"
+                data-testid="text-user-name"
+              >
                 {user?.firstName} {user?.lastName}
               </span>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={handleLogout}
                 data-testid="button-logout"

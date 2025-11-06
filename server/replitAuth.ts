@@ -54,7 +54,7 @@ function updateUserSession(
 }
 
 async function upsertUser(claims: any) {
-  const user = await storage.upsertUser({
+  let user = await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
     firstName: claims["first_name"],
@@ -69,8 +69,8 @@ async function upsertUser(claims: any) {
       plan: "starter",
     });
     
-    // Update user with organizationId
-    await storage.upsertUser({
+    // Update user with organizationId and return the updated user
+    user = await storage.upsertUser({
       id: user.id,
       email: user.email!,
       firstName: user.firstName!,
@@ -79,6 +79,8 @@ async function upsertUser(claims: any) {
       organizationId: org.id,
     });
   }
+  
+  return user;
 }
 
 export async function setupAuth(app: Express) {
@@ -169,5 +171,3 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     return;
   }
 };
-
-////////
