@@ -9,52 +9,65 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Send, Users } from "lucide-react";
 import type { Conversation, Message, Application } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function TeamChat() {
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<
+    string | null
+  >(null);
   const [messageInput, setMessageInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const { user } = useAuth();
 
   const { data: conversations = [] } = useQuery<Conversation[]>({
-    queryKey: ['/api/conversations'],
+    queryKey: ["/api/conversations"],
     queryFn: async () => {
-      const res = await fetch('/api/conversations?type=internal');
+      const res = await fetch("/api/conversations?type=internal");
       return res.json();
-    }
+    },
   });
 
   const { data: applications = [] } = useQuery<Application[]>({
-    queryKey: ['/api/applications'],
+    queryKey: ["/api/applications"],
   });
 
   const { data: messages = [] } = useQuery<Message[]>({
-    queryKey: ['/api/conversations', selectedConversation, 'messages'],
+    queryKey: ["/api/conversations", selectedConversation, "messages"],
     queryFn: async () => {
       if (!selectedConversation) return [];
-      const res = await fetch(`/api/conversations/${selectedConversation}/messages`);
+      const res = await fetch(
+        `/api/conversations/${selectedConversation}/messages`,
+      );
       return res.json();
     },
-    enabled: !!selectedConversation
+    enabled: !!selectedConversation,
   });
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
+      const senderName =
+        user?.firstName && user?.lastName
+          ? `${user.firstName} ${user.lastName}`
+          : user?.email || "User";
+
       return apiRequest(
-        'POST',
+        "POST",
         `/api/conversations/${selectedConversation}/messages`,
         {
-          senderName: "Current User",
+          senderName,
           senderRole: "user",
           content,
-          messageType: "text"
-        }
+          messageType: "text",
+        },
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'messages'] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/conversations", selectedConversation, "messages"],
+      });
       setMessageInput("");
-    }
+    },
   });
 
   useEffect(() => {
@@ -63,15 +76,33 @@ export default function TeamChat() {
     const socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
-      console.log('WebSocket connected');
+      console.log("WebSocket connected");
+      // Subscribe to selected conversation immediately when socket opens
+      if (selectedConversation) {
+        socket.send(
+          JSON.stringify({
+            type: "subscribe",
+              integrationId: selectedConversation,
+          }),
+        );
+      }
     };
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (data.type === 'new_message') {
-        queryClient.invalidateQueries({ queryKey: ['/api/conversations', data.conversationId, 'messages'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      console.log("WebSocket message received:", data);
+      if (data.type === "new_message") {
+        queryClient.invalidateQueries({
+          queryKey: ["/api/conversations", data.integrationId, "messages"],
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      } else if (data.type === "subscribed") {
+        console.log("Subscribed to conversation:", data.integrationId);
       }
+    };
+
+    socket.onerror = (error) => {
+      console.error("WebSocket error:", error);
     };
 
     wsRef.current = socket;
@@ -79,7 +110,44 @@ export default function TeamChat() {
     return () => {
       socket.close();
     };
-  }, []);
+  }, [selectedConversation]);
+
+  // Subscribe to selected conversation when it changes
+  useEffect(() => {
+    const socket = wsRef.current;
+    if (!socket || !selectedConversation) return;
+
+    const subscribeToConversation = () => {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(
+          JSON.stringify({
+            type: "subscribe",
+            conversationId: selectedConversation,
+          }),
+        );
+      }
+    };
+
+    // Subscribe immediately if socket is already open
+    if (socket.readyState === WebSocket.OPEN) {
+      subscribeToConversation();
+    } else {
+      // Wait for socket to open, then subscribe
+      socket.addEventListener("open", subscribeToConversation, { once: true });
+    }
+
+    // Cleanup: unsubscribe when switching conversations
+    return () => {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(
+          JSON.stringify({
+            type: "unsubscribe",
+            conversationId: selectedConversation,
+          }),
+        );
+      }
+    };
+  }, [selectedConversation]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -87,7 +155,7 @@ export default function TeamChat() {
 
   useEffect(() => {
     if (conversations.length > 0 && !selectedConversation) {
-      setSelectedConversation(conversations[0].id);
+      setSelectedConversation(conversations[0].integrationId);
     }
   }, [conversations, selectedConversation]);
 
@@ -96,14 +164,18 @@ export default function TeamChat() {
     sendMessageMutation.mutate(messageInput);
   };
 
-  const selectedConv = conversations.find(c => c.id === selectedConversation);
-  const selectedApp = applications.find(a => a.id === selectedConv?.applicationId);
+  const selectedConv = conversations.find((c) => c.id === selectedConversation);
+  const selectedApp = applications.find(
+    (a) => a.integrationId === selectedConv?.integrationId,
+  );
 
   return (
     <div className="flex flex-col gap-6 h-full">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold" data-testid="text-page-title">Team Chat</h1>
+          <h1 className="text-3xl font-semibold" data-testid="text-page-title">
+            Team Chat
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Collaborate with your team on application usage and optimization
           </p>
@@ -122,18 +194,28 @@ export default function TeamChat() {
             <ScrollArea className="h-[calc(100vh-280px)]">
               <div className="space-y-1 p-4 pt-0">
                 {conversations.map((conv) => {
-                  const app = applications.find(a => a.id === conv.applicationId);
+                  const app = applications.find(
+                    (a) => a.integrationId === conv.integrationId,
+                  );
                   return (
                     <button
                       key={conv.id}
-                      onClick={() => setSelectedConversation(conv.id)}
+                      onClick={() =>
+                        setSelectedConversation(conv.integrationId)
+                      }
                       className={`w-full text-left p-3 rounded-lg transition-colors hover-elevate active-elevate-2 ${
-                        selectedConversation === conv.id ? 'bg-accent' : ''
+                        selectedConversation === conv.integrationId
+                          ? "bg-accent"
+                          : ""
                       }`}
-                      data-testid={`button-conversation-${conv.id}`}
+                      data-testid={`link-conversation-${conv.id}`}
                     >
-                      <div className="font-medium text-sm truncate">{conv.title}</div>
-                      <div className="text-xs text-muted-foreground mt-1">{app?.name}</div>
+                      <div className="font-medium text-sm truncate">
+                        {conv.title}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {app?.name}
+                      </div>
                     </button>
                   );
                 })}
@@ -145,7 +227,9 @@ export default function TeamChat() {
         <Card className="flex flex-col">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">{selectedConv?.title || 'Select a conversation'}</CardTitle>
+              <CardTitle className="text-base">
+                {selectedConv?.title || "Select a conversation"}
+              </CardTitle>
               {selectedApp && (
                 <Badge variant="outline">{selectedApp.name}</Badge>
               )}
@@ -162,12 +246,17 @@ export default function TeamChat() {
                   >
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className="text-xs">
-                        {msg.senderName.split(' ').map(n => n[0]).join('')}
+                        {msg.senderName
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex items-baseline gap-2">
-                        <span className="font-semibold text-sm">{msg.senderName}</span>
+                        <span className="font-semibold text-sm">
+                          {msg.senderName}
+                        </span>
                         <span className="text-xs text-muted-foreground">
                           {new Date(msg.createdAt).toLocaleTimeString()}
                         </span>
@@ -184,14 +273,18 @@ export default function TeamChat() {
                 <Input
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                   placeholder="Type a message..."
                   disabled={!selectedConversation}
                   data-testid="input-message"
                 />
-                <Button 
+                <Button
                   onClick={handleSendMessage}
-                  disabled={!messageInput.trim() || !selectedConversation || sendMessageMutation.isPending}
+                  disabled={
+                    !messageInput.trim() ||
+                    !selectedConversation ||
+                    sendMessageMutation.isPending
+                  }
                   data-testid="button-send-message"
                 >
                   <Send className="h-4 w-4" />
