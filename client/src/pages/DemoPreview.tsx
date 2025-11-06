@@ -7,152 +7,110 @@ import { Package, DollarSign, CreditCard, TrendingUp, AlertCircle } from "lucide
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useQuery } from "@tanstack/react-query";
+import type { Application, License, Renewal, Recommendation, SpendingHistory } from "@shared/schema";
+
+interface DemoData {
+  applications: Application[];
+  licenses: License[];
+  renewals: Renewal[];
+  recommendations: Recommendation[];
+  spendingHistory: SpendingHistory[];
+  stats: {
+    totalApplications: number;
+    totalLicenses: number;
+    totalActiveLicenses: number;
+    monthlySpend: number;
+    potentialSavings: number;
+  };
+}
 
 export default function DemoPreview() {
   const handleLogin = () => {
     window.location.href = '/api/login';
   };
 
-  const demoApplications = [
-    {
-      id: "1",
-      name: "Slack",
-      category: "Communication",
-      monthlyCost: 800,
-      status: "approved" as const,
-      logo: "/assets/generated_images/Slack_app_icon_a668dc5a.png"
-    },
-    {
-      id: "2",
-      name: "Salesforce",
-      category: "CRM",
-      monthlyCost: 1500,
-      status: "approved" as const,
-      logo: "/assets/generated_images/Salesforce_app_icon_0d18cc45.png"
-    },
-    {
-      id: "3",
-      name: "Zoom",
-      category: "Video Conferencing",
-      monthlyCost: 300,
-      status: "trial" as const,
-      logo: "/assets/generated_images/Zoom_app_icon_3be960fb.png"
-    },
-    {
-      id: "4",
-      name: "GitHub",
-      category: "Development",
-      monthlyCost: 840,
-      status: "approved" as const,
-      logo: "/assets/generated_images/GitHub_app_icon_40d531dd.png"
-    },
-    {
-      id: "5",
-      name: "Figma",
-      category: "Design",
-      monthlyCost: 300,
-      status: "approved" as const,
-      logo: "/assets/generated_images/Figma_app_icon_91c3879c.png"
-    },
-    {
-      id: "6",
-      name: "Notion",
-      category: "Productivity",
-      monthlyCost: 80,
-      status: "shadow" as const,
-      logo: "/assets/generated_images/Notion_app_icon_9574a133.png"
-    }
-  ];
+  const { data: demoData, isLoading, isError, refetch } = useQuery<DemoData>({
+    queryKey: ['/api/demo-data'],
+  });
 
-  const demoStats = {
-    totalApplications: 6,
-    totalLicenses: 165,
-    totalActiveLicenses: 138,
-    monthlySpend: 3820,
-    potentialSavings: 420
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-muted-foreground">Loading demo...</div>
+      </div>
+    );
+  }
 
-  const demoSpendingData = [
-    { month: "Jan", spend: 3200 },
-    { month: "Feb", spend: 3400 },
-    { month: "Mar", spend: 3600 },
-    { month: "Apr", spend: 3700 },
-    { month: "May", spend: 3820 },
-    { month: "Jun", spend: 3820 }
-  ];
+  if (isError || !demoData) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <AlertCircle className="h-12 w-12 text-destructive" />
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Failed to load demo data</h2>
+          <p className="text-muted-foreground mb-4">
+            Unable to fetch the demo organization. Please try again.
+          </p>
+          <Button onClick={() => refetch()} data-testid="button-retry-demo">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
-  const today = new Date();
-  const demoRenewals = [
-    {
-      id: "1",
-      appName: "Salesforce",
-      renewalDate: new Date(today.getFullYear(), today.getMonth() + 1, 15).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      annualCost: 18000,
-      daysUntilRenewal: 45
-    },
-    {
-      id: "2",
-      appName: "GitHub",
-      renewalDate: new Date(today.getFullYear(), today.getMonth() + 2, 20).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      annualCost: 10080,
-      daysUntilRenewal: 80
-    },
-    {
-      id: "3",
-      appName: "Slack",
-      renewalDate: new Date(today.getFullYear(), today.getMonth() + 3, 10).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      annualCost: 9600,
-      daysUntilRenewal: 100
-    }
-  ];
+  const { applications, renewals, recommendations, spendingHistory, stats } = demoData;
 
-  const demoRecommendations = [
-    {
-      id: "1",
-      type: "downgrade" as const,
-      appName: "Zoom",
-      title: "Downgrade Zoom License Tier",
-      description: "Only 15 of 25 licenses are actively used. Consider downgrading to save costs.",
-      priority: "high" as const,
-      actionLabel: "Review Options",
+  // Transform spending history for chart
+  const spendingData = spendingHistory.map(item => ({
+    month: item.month,
+    spend: Number(item.totalSpend)
+  }));
+
+  // Transform renewals for calendar
+  const renewalData = renewals.map(renewal => {
+    const app = applications.find(a => a.id === renewal.applicationId);
+    const renewalDate = new Date(renewal.renewalDate);
+    const today = new Date();
+    const daysUntilRenewal = Math.ceil((renewalDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    return {
+      id: renewal.id,
+      appName: app?.name || 'Unknown',
+      renewalDate: renewalDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      annualCost: Number(renewal.annualCost),
+      daysUntilRenewal
+    };
+  });
+
+  // Transform recommendations for action cards
+  const actionRecommendations = recommendations.map(rec => {
+    const app = applications.find(a => a.id === rec.applicationId);
+    return {
+      id: rec.id,
+      type: rec.type as any,
+      appName: app?.name || 'Unknown',
+      title: rec.title,
+      description: rec.description,
+      priority: rec.priority as any,
+      actionLabel: rec.actionLabel,
       metadata: {
-        currentCost: 300,
-        potentialCost: 180,
-        currentUsers: 25,
-        activeUsers: 15
+        currentCost: rec.currentCost ? Number(rec.currentCost) : undefined,
+        potentialCost: rec.potentialCost ? Number(rec.potentialCost) : undefined,
+        renewalDate: rec.renewalDate || undefined,
+        currentUsers: rec.currentUsers || undefined,
+        activeUsers: rec.activeUsers || undefined,
+        contractValue: rec.contractValue ? Number(rec.contractValue) : undefined,
       }
-    },
-    {
-      id: "2",
-      type: "cost-review" as const,
-      appName: "Salesforce",
-      title: "Review Salesforce Contract",
-      description: "Annual renewal approaching. Compare with alternatives before auto-renewal.",
-      priority: "high" as const,
-      actionLabel: "Start Review",
-      metadata: {
-        renewalDate: new Date(today.getFullYear(), today.getMonth() + 1, 15).toISOString(),
-        contractValue: 18000
-      }
-    },
-    {
-      id: "3",
-      type: "track-users" as const,
-      appName: "Notion",
-      title: "Shadow IT Detection: Notion",
-      description: "Unapproved tool detected. Track usage and evaluate if formal adoption is needed.",
-      priority: "medium" as const,
-      actionLabel: "Investigate",
-      metadata: {}
-    }
-  ];
+    };
+  });
 
   return (
     <div className="min-h-screen bg-background">
       <Alert className="mb-6 border-primary/50 bg-primary/10">
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Demo Preview Mode</AlertTitle>
-        <AlertDescription className="flex items-center justify-between">
+        <AlertDescription className="flex items-center justify-between gap-4 flex-wrap">
           <span>You're viewing a read-only demo. Log in to manage your own SaaS applications.</span>
           <Button 
             size="sm" 
@@ -169,39 +127,43 @@ export default function DemoPreview() {
           <MetricCard
             icon={Package}
             title="Total Applications"
-            value={demoStats.totalApplications}
+            value={stats.totalApplications}
             trend={{ value: 12, isPositive: true }}
+            data-testid="metric-total-applications"
           />
           <MetricCard
             icon={CreditCard}
             title="Active Licenses"
-            value={`${demoStats.totalActiveLicenses}/${demoStats.totalLicenses}`}
+            value={`${stats.totalActiveLicenses}/${stats.totalLicenses}`}
             trend={{ value: 5, isPositive: true }}
+            data-testid="metric-active-licenses"
           />
           <MetricCard
             icon={DollarSign}
             title="Monthly Spend"
-            value={`$${demoStats.monthlySpend.toLocaleString()}`}
+            value={`$${stats.monthlySpend.toLocaleString()}`}
             trend={{ value: 3, isPositive: false }}
+            data-testid="metric-monthly-spend"
           />
           <MetricCard
             icon={TrendingUp}
             title="Potential Savings"
-            value={`$${demoStats.potentialSavings.toLocaleString()}`}
+            value={`$${stats.potentialSavings.toLocaleString()}`}
             trend={{ value: 8, isPositive: true }}
+            data-testid="metric-potential-savings"
           />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <SpendingChart data={demoSpendingData} />
-          <RenewalCalendar renewals={demoRenewals} />
+          <SpendingChart data={spendingData} />
+          <RenewalCalendar renewals={renewalData} />
         </div>
 
         <div className="space-y-6">
           <div className="bg-black dark:bg-black p-6 rounded-lg">
             <h2 className="text-xl font-semibold mb-4 text-white">Recommended Actions</h2>
             <div className="space-y-4">
-              {demoRecommendations.map((rec) => (
+              {actionRecommendations.map((rec) => (
                 <ActionRecommendation key={rec.id} {...rec} />
               ))}
             </div>
@@ -211,15 +173,15 @@ export default function DemoPreview() {
             <CardContent className="pt-6">
               <h2 className="text-xl font-semibold mb-4">All Applications</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {demoApplications.map((app) => (
+                {applications.map((app) => (
                   <ApplicationCard 
                     key={app.id} 
                     id={app.id}
                     name={app.name}
                     category={app.category}
-                    monthlyCost={app.monthlyCost}
-                    status={app.status}
-                    logo={app.logo}
+                    monthlyCost={Number(app.monthlyCost)}
+                    status={app.status as "approved" | "shadow" | "trial"}
+                    logo={app.logoUrl || ""}
                   />
                 ))}
               </div>
